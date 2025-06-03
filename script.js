@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // JSONをHTMLに変換（構文ハイライトとインデントレインボー付き）
-    function jsonToHtml(obj, indent = 0, inArray = false) {
+    function jsonToHtml(obj, indent = 0, inArray = false, arrayComma = '') {
         let html = '';
         
         if (obj === null) {
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 文字列をグローバルに保存
                 window.fullStrings = window.fullStrings || {};
                 window.fullStrings[stringId] = obj;
-                return `<span class="json-string truncated-string" data-string-id="${stringId}" title="クリックして全体を表示">"${escapeHtml(truncated)}…"</span>`;
+                return `<span class="json-string truncated-string" data-action="show-string" data-string-id="${stringId}" title="クリックして全体を表示">"${escapeHtml(truncated)}…"</span>`;
             }
             return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
         }
@@ -314,38 +314,36 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const arrayId = 'arr-' + Math.random().toString(36).substr(2, 9);
-            html += `<span class="json-bracket">[</span>\n`;
+            html += `<span class="json-bracket">[</span>`;
             
             if (obj.length > 3) {
-                // 最初の3要素を表示
+                // 最初の3要素を表示（すべてカンマ付き）
                 for (let i = 0; i < 3; i++) {
-                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(obj[i], indent + 1, true)}`;
-                    html += ',\n';
+                    html += `<span class="line">${createIndentGuides(indent + 1)}<span class="array-item">${jsonToHtml(obj[i], indent + 1, true, ',')}</span></span>`;
                 }
                 
-                // 省略表示と残りの要素を格納
-                html += `${createIndentGuides(indent + 1)}<span class="expand-array" data-array-id="${arrayId}">… (他${obj.length - 3}要素)</span>`;
+                // 省略表示（行全体を1つの要素として扱う）
+                html += `<span class="line">`;
+                html += `${createIndentGuides(indent + 1)}`;
+                html += `<span class="expand-array" data-action="expand-array" data-target="${arrayId}">… (他${obj.length - 3}要素)</span>`;
+                html += `</span>`;
                 
                 // 残りの要素（初期状態では非表示）
-                html += `<span id="${arrayId}" style="display: none;">`;
+                html += `<span id="${arrayId}-hidden" style="display: none;">`;
                 for (let i = 3; i < obj.length; i++) {
-                    html += ',\n';
-                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(obj[i], indent + 1, true)}`;
+                    const comma = i < obj.length - 1 ? ',' : '';
+                    html += `<span class="line">${createIndentGuides(indent + 1)}<span class="array-item">${jsonToHtml(obj[i], indent + 1, true, comma)}</span></span>`;
                 }
                 html += `</span>`;
-                html += '\n';
             } else {
                 // 3要素以下の場合は通常表示
                 obj.forEach((item, index) => {
-                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(item, indent + 1, true)}`;
-                    if (index < obj.length - 1) {
-                        html += ',';
-                    }
-                    html += '\n';
+                    const comma = index < obj.length - 1 ? ',' : '';
+                    html += `<span class="line">${createIndentGuides(indent + 1)}<span class="array-item">${jsonToHtml(item, indent + 1, true, comma)}</span></span>`;
                 });
             }
             
-            html += `${createIndentGuides(indent)}<span class="json-bracket">]</span>`;
+            html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">]</span>${arrayComma}</span>`;
             return html;
         }
         
@@ -360,51 +358,63 @@ document.addEventListener('DOMContentLoaded', function() {
             // 配列内のオブジェクトにも展開ボタンを追加
             if (inArray && keys.length > 0) {
                 const keyId = objId + '-arr';
-                html += `<span class="json-bracket">{</span> <span class="collapsible-key collapse-icon" data-key-id="${keyId}">▼</span>\n`;
-                html += `<span id="${keyId}-value">`;
-                html += `<span class="object-content" id="${objId}">`;
+                html += `<span class="json-bracket">{</span> `;
+                html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${keyId}">`;
+                html += `<span class="collapse-icon">▼</span>`;
+                html += `</span>`;
+                html += `<span class="collapsible-group" id="${keyId}">`;
                 keys.forEach((key, index) => {
                     const value = obj[key];
-                    html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1)}`;
-                    if (index < keys.length - 1) {
-                        html += ',';
-                    }
-                    html += '\n';
+                    const comma = index < keys.length - 1 ? ',' : '';
+                    html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1, false)}${comma}</span>`;
                 });
                 html += `</span>`;
+                html += `<span class="collapsed-placeholder" id="${keyId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${keyId}">`;
+                html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
                 html += `</span>`;
+                html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${arrayComma}</span>`;
+                return html;
             } else {
-                html += `<span class="json-bracket">{</span>\n`;
-                // オブジェクトの内容を格納するコンテナ
-                html += `<span class="object-content" id="${objId}">`;
+                html += `<span class="json-bracket">{</span>`;
                 keys.forEach((key, index) => {
                     const value = obj[key];
                     const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+                    const comma = index < keys.length - 1 ? ',' : '';
                     
                     if (isObject && Object.keys(value).length > 0) {
                         // 折りたたみ可能なオブジェクト
                         const keyId = objId + '-' + index;
-                        const valueHtml = jsonToHtml(value, indent + 1);
-                        // {の後に展開ボタンを挿入
-                        const modifiedValueHtml = valueHtml.replace(
-                            /^<span class="json-bracket">{<\/span>/,
-                            `<span class="json-bracket">{</span> <span class="collapsible-key collapse-icon" data-key-id="${keyId}">▼</span>`
-                        );
-                        html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: <span id="${keyId}-value">${modifiedValueHtml}</span>`;
+                        html += `<span class="line">`;
+                        html += `${createIndentGuides(indent + 1)}`;
+                        html += `<span class="json-key">"${escapeHtml(key)}"</span>: `;
+                        html += `<span class="json-bracket">{</span> `;
+                        html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${keyId}">`;
+                        html += `<span class="collapse-icon">▼</span>`;
+                        html += `</span>`;
+                        html += `</span>`;
+                        
+                        html += `<span class="collapsible-group" id="${keyId}">`;
+                        // オブジェクトの中身を再帰的に生成
+                        const valueKeys = Object.keys(value);
+                        valueKeys.forEach((vKey, vIndex) => {
+                            const vComma = vIndex < valueKeys.length - 1 ? ',' : '';
+                            html += `<span class="line">${createIndentGuides(indent + 2)}<span class="json-key">"${escapeHtml(vKey)}"</span>: ${jsonToHtml(value[vKey], indent + 2, false)}${vComma}</span>`;
+                        });
+                        html += `</span>`;
+                        
+                        html += `<span class="collapsed-placeholder" id="${keyId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${keyId}">`;
+                        html += `<span class="line">${createIndentGuides(indent + 2)}<span class="expand-trigger">...</span></span>`;
+                        html += `</span>`;
+                        
+                        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-bracket">}</span>${comma}</span>`;
                     } else {
                         // 通常のキー
-                        html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1)}`;
+                        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1, false)}${comma}</span>`;
                     }
-                    
-                    if (index < keys.length - 1) {
-                        html += ',';
-                    }
-                    html += '\n';
                 });
-                html += `</span>`;
             }
             
-            html += `${createIndentGuides(indent)}<span class="json-bracket">}</span>`;
+            html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${arrayComma}</span>`;
             return html;
         }
         
@@ -429,29 +439,75 @@ document.addEventListener('DOMContentLoaded', function() {
         jsonDisplay.innerHTML = jsonToHtml(json);
         dialog.classList.add('active');
         
-        // 省略された文字列のクリックイベントを設定
-        setupTruncatedStringHandlers();
-        
-        // 折りたたみ可能なキーのクリックイベントを設定
-        setupCollapsibleHandlers();
-        
-        // 配列の展開リンクのクリックイベントを設定
-        setupArrayExpandHandlers();
+        // イベントデリゲーションハンドラーを初期化（一度だけ）
+        initializeJsonEventHandlers();
     }
     
-    // 省略された文字列のクリックハンドラーを設定
-    function setupTruncatedStringHandlers() {
-        const truncatedStrings = document.querySelectorAll('.truncated-string');
-        truncatedStrings.forEach(elem => {
-            elem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const stringId = elem.dataset.stringId;
-                const fullString = window.fullStrings[stringId];
-                if (fullString) {
-                    showStringDialog(fullString);
-                }
-            });
-        });
+    // イベントデリゲーションの初期化
+    let jsonEventHandlersInitialized = false;
+    function initializeJsonEventHandlers() {
+        if (jsonEventHandlersInitialized) return;
+        
+        const jsonDisplay = document.getElementById('json-display');
+        jsonDisplay.addEventListener('click', handleJsonClick);
+        jsonEventHandlersInitialized = true;
+    }
+    
+    // 統一的なクリックハンドラー
+    function handleJsonClick(e) {
+        const actionElement = e.target.closest('[data-action]');
+        if (!actionElement) return;
+        
+        e.stopPropagation();
+        const action = actionElement.dataset.action;
+        
+        switch (action) {
+            case 'expand-array':
+                expandArray(actionElement.dataset.target);
+                break;
+            case 'toggle-collapse':
+                toggleObjectCollapse(actionElement.dataset.target);
+                break;
+            case 'show-string':
+                showStringDialog(window.fullStrings[actionElement.dataset.stringId]);
+                break;
+        }
+    }
+    
+    // 配列展開の処理
+    function expandArray(arrayId) {
+        // 省略表示の行を非表示
+        const expandLine = document.querySelector(`[data-action="expand-array"][data-target="${arrayId}"]`).closest('.line');
+        if (expandLine) {
+            expandLine.style.display = 'none';
+        }
+        
+        // 隠れていた要素を表示
+        const hiddenContent = document.getElementById(arrayId + '-hidden');
+        if (hiddenContent) {
+            hiddenContent.style.display = 'inline';
+        }
+    }
+    
+    // オブジェクト折りたたみの処理
+    function toggleObjectCollapse(objId) {
+        const contentGroup = document.getElementById(objId);
+        const placeholder = document.getElementById(objId + '-placeholder');
+        const icon = document.querySelector(`[data-target="${objId}"] .collapse-icon`);
+        
+        if (contentGroup && placeholder && icon) {
+            if (contentGroup.style.display === 'none') {
+                // 展開
+                contentGroup.style.display = 'inline';
+                placeholder.style.display = 'none';
+                icon.textContent = '▼';
+            } else {
+                // 折りたたみ
+                contentGroup.style.display = 'none';
+                placeholder.style.display = 'inline';
+                icon.textContent = '▶';
+            }
+        }
     }
     
     // 文字列詳細ダイアログを表示
@@ -461,68 +517,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         stringDisplay.textContent = str;
         dialog.classList.add('active');
-    }
-    
-    // 折りたたみ可能なキーのハンドラーを設定
-    function setupCollapsibleHandlers() {
-        const collapsibleKeys = document.querySelectorAll('.collapsible-key');
-        collapsibleKeys.forEach(elem => {
-            elem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const keyId = elem.dataset.keyId;
-                const valueElem = document.getElementById(keyId + '-value');
-                const icon = elem.querySelector('.collapse-icon');
-                
-                if (valueElem) {
-                    const isCollapsed = elem.classList.contains('collapsed');
-                    
-                    if (isCollapsed) {
-                        // 展開
-                        elem.classList.remove('collapsed');
-                        const originalContent = elem.dataset.originalContent;
-                        if (originalContent) {
-                            valueElem.innerHTML = originalContent;
-                        }
-                        icon.textContent = '▼';
-                        
-                        // 展開後のハンドラーを再設定
-                        setupTruncatedStringHandlers();
-                        setupCollapsibleHandlers();
-                        setupArrayExpandHandlers();
-                    } else {
-                        // 折りたたむ
-                        elem.classList.add('collapsed');
-                        // 元のコンテンツをデータ属性に保存
-                        elem.dataset.originalContent = valueElem.innerHTML;
-                        valueElem.innerHTML = '<span class="collapsed-placeholder">{...}</span>';
-                        icon.textContent = '▶';
-                    }
-                }
-            });
-        });
-    }
-    
-    // 配列の展開ハンドラーを設定
-    function setupArrayExpandHandlers() {
-        const expandLinks = document.querySelectorAll('.expand-array');
-        expandLinks.forEach(elem => {
-            elem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const arrayId = elem.dataset.arrayId;
-                const hiddenElements = document.getElementById(arrayId);
-                
-                if (hiddenElements) {
-                    // 省略表示を削除
-                    elem.style.display = 'none';
-                    // 残りの要素を表示
-                    hiddenElements.style.display = 'inline';
-                    
-                    // ハンドラーを再設定
-                    setupTruncatedStringHandlers();
-                    setupCollapsibleHandlers();
-                }
-            });
-        });
     }
     
     // ダイアログ関連のイベントリスナー

@@ -412,31 +412,41 @@ button {
 }
 
 /* 折りたたみ可能なオブジェクト */
-.collapsible-key {
+.collapsible-toggle {
     cursor: pointer;
     user-select: none;
+    display: inline-block;
 }
 
-.collapsible-key:hover {
-    text-decoration: underline;
+.collapsible-toggle:hover .collapse-icon {
+    color: #333;
 }
 
 .collapse-icon {
     display: inline-block;
     width: 12px;
     text-align: center;
-    margin-right: 4px;
     font-family: monospace;
     color: #666;
 }
 
-.collapsed-content {
-    display: none;
+.collapsible-content {
+    display: inline;
 }
 
 .collapsed-placeholder {
     color: #999;
     font-style: italic;
+    cursor: pointer;
+}
+
+.collapsed-placeholder:hover {
+    color: #666;
+    text-decoration: underline;
+}
+
+.expand-trigger {
+    cursor: pointer;
 }
 
 /* 配列の省略表示 */
@@ -448,4 +458,17 @@ button {
 
 .expand-array:hover {
     color: #0052cc;
+}
+
+/* 行ラッパー */
+.line {
+    display: block;
+    white-space: nowrap;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0;
+}
+
+.collapsible-group {
+    display: block;
 }
