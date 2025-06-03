@@ -307,15 +307,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         html += `</span>`;
         
-        // 折りたたみ時のプレースホルダー（最上位階層では不要）
+        // 閉じ括弧（末尾カンマ付き）- 折りたたみ時には非表示
+        html += `<span class="closing-bracket" id="${objId}-closing">`;
+        html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${trailingComma}</span>`;
+        html += `</span>`;
+        
+        // 折りたたみ時のプレースホルダー（最上位階層では不要）- 1行で表示
         if (!isTopLevel) {
             html += `<span class="collapsed-placeholder" id="${objId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${objId}">`;
-            html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
+            html += `<span class="expand-trigger">... </span>`;
+            html += `<span class="json-bracket">}</span>${trailingComma}`;
             html += `</span>`;
         }
-        
-        // 閉じ括弧（末尾カンマ付き）
-        html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${trailingComma}</span>`;
         
         return html;
     }
@@ -472,6 +475,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleObjectCollapse(objId) {
         const contentGroup = document.getElementById(objId);
         const placeholder = document.getElementById(objId + '-placeholder');
+        const closingBracket = document.getElementById(objId + '-closing');
         const icon = document.querySelector(`[data-target="${objId}"] .collapse-icon`);
         
         if (contentGroup && placeholder && icon) {
@@ -479,11 +483,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 展開
                 contentGroup.style.display = 'inline';
                 placeholder.style.display = 'none';
+                if (closingBracket) closingBracket.style.display = 'inline';
                 icon.textContent = '▼';
             } else {
                 // 折りたたみ
                 contentGroup.style.display = 'none';
                 placeholder.style.display = 'inline';
+                if (closingBracket) closingBracket.style.display = 'none';
                 icon.textContent = '▶';
             }
         }

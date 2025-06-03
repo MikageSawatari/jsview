@@ -438,6 +438,7 @@ button {
     color: #999;
     font-style: italic;
     cursor: pointer;
+    display: inline;
 }
 
 .collapsed-placeholder:hover {
@@ -447,6 +448,10 @@ button {
 
 .expand-trigger {
     cursor: pointer;
+}
+
+.closing-bracket {
+    display: inline;
 }
 
 /* 配列の省略表示 */
