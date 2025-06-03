@@ -281,16 +281,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 折りたたみ可能なオブジェクトをレンダリング
-    function renderCollapsibleObject(obj, indent, trailingComma = '') {
+    function renderCollapsibleObject(obj, indent, trailingComma = '', isTopLevel = false) {
         const objId = 'obj-' + Math.random().toString(36).substr(2, 9);
         const keys = Object.keys(obj);
         let html = '';
         
-        // 開き括弧と折りたたみボタン
-        html += `<span class="json-bracket">{</span> `;
-        html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${objId}">`;
-        html += `<span class="collapse-icon">▼</span>`;
-        html += `</span>`;
+        // 開き括弧と折りたたみボタン（最上位階層では折りたたみボタンを表示しない）
+        html += `<span class="json-bracket">{</span>`;
+        if (!isTopLevel) {
+            html += ` <span class="collapsible-toggle" data-action="toggle-collapse" data-target="${objId}">`;
+            html += `<span class="collapse-icon">▼</span>`;
+            html += `</span>`;
+        }
         
         // 折りたたみ可能なコンテンツ
         html += `<span class="collapsible-group" id="${objId}">`;
@@ -305,10 +307,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         html += `</span>`;
         
-        // 折りたたみ時のプレースホルダー
-        html += `<span class="collapsed-placeholder" id="${objId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${objId}">`;
-        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
-        html += `</span>`;
+        // 折りたたみ時のプレースホルダー（最上位階層では不要）
+        if (!isTopLevel) {
+            html += `<span class="collapsed-placeholder" id="${objId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${objId}">`;
+            html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
+            html += `</span>`;
+        }
         
         // 閉じ括弧（末尾カンマ付き）
         html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${trailingComma}</span>`;
@@ -317,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // JSONをHTMLに変換（構文ハイライトとインデントレインボー付き）
-    function jsonToHtml(obj, indent = 0, inArray = false, arrayComma = '') {
+    function jsonToHtml(obj, indent = 0, inArray = false, arrayComma = '', isTopLevel = false) {
         let html = '';
         
         if (obj === null) {
@@ -390,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // すべての非空オブジェクトは折りたたみ可能
-            return renderCollapsibleObject(obj, indent, arrayComma);
+            return renderCollapsibleObject(obj, indent, arrayComma, isTopLevel);
         }
         
         return String(obj);
@@ -411,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 文字列をリセット
         window.fullStrings = {};
         
-        jsonDisplay.innerHTML = jsonToHtml(json);
+        jsonDisplay.innerHTML = jsonToHtml(json, 0, false, '', true);
         dialog.classList.add('active');
         
         // イベントデリゲーションハンドラーを初期化（一度だけ）
