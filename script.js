@@ -280,6 +280,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return guides;
     }
     
+    // 折りたたみ可能なオブジェクトをレンダリング
+    function renderCollapsibleObject(obj, indent, trailingComma = '') {
+        const objId = 'obj-' + Math.random().toString(36).substr(2, 9);
+        const keys = Object.keys(obj);
+        let html = '';
+        
+        // 開き括弧と折りたたみボタン
+        html += `<span class="json-bracket">{</span> `;
+        html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${objId}">`;
+        html += `<span class="collapse-icon">▼</span>`;
+        html += `</span>`;
+        
+        // 折りたたみ可能なコンテンツ
+        html += `<span class="collapsible-group" id="${objId}">`;
+        keys.forEach((key, index) => {
+            const value = obj[key];
+            const comma = index < keys.length - 1 ? ',' : '';
+            html += `<span class="line">`;
+            html += createIndentGuides(indent + 1);
+            html += `<span class="json-key">"${escapeHtml(key)}"</span>: `;
+            html += jsonToHtml(value, indent + 1, false, comma);
+            html += `</span>`;
+        });
+        html += `</span>`;
+        
+        // 折りたたみ時のプレースホルダー
+        html += `<span class="collapsed-placeholder" id="${objId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${objId}">`;
+        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
+        html += `</span>`;
+        
+        // 閉じ括弧（末尾カンマ付き）
+        html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${trailingComma}</span>`;
+        
+        return html;
+    }
+    
     // JSONをHTMLに変換（構文ハイライトとインデントレインボー付き）
     function jsonToHtml(obj, indent = 0, inArray = false, arrayComma = '') {
         let html = '';
@@ -353,69 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `<span class="json-bracket">{}</span>`;
             }
             
-            const objId = 'obj-' + Math.random().toString(36).substr(2, 9);
-            
-            // 配列内のオブジェクトにも展開ボタンを追加
-            if (inArray && keys.length > 0) {
-                const keyId = objId + '-arr';
-                html += `<span class="json-bracket">{</span> `;
-                html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${keyId}">`;
-                html += `<span class="collapse-icon">▼</span>`;
-                html += `</span>`;
-                html += `<span class="collapsible-group" id="${keyId}">`;
-                keys.forEach((key, index) => {
-                    const value = obj[key];
-                    const comma = index < keys.length - 1 ? ',' : '';
-                    html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1, false)}${comma}</span>`;
-                });
-                html += `</span>`;
-                html += `<span class="collapsed-placeholder" id="${keyId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${keyId}">`;
-                html += `<span class="line">${createIndentGuides(indent + 1)}<span class="expand-trigger">...</span></span>`;
-                html += `</span>`;
-                html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${arrayComma}</span>`;
-                return html;
-            } else {
-                html += `<span class="json-bracket">{</span>`;
-                keys.forEach((key, index) => {
-                    const value = obj[key];
-                    const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
-                    const comma = index < keys.length - 1 ? ',' : '';
-                    
-                    if (isObject && Object.keys(value).length > 0) {
-                        // 折りたたみ可能なオブジェクト
-                        const keyId = objId + '-' + index;
-                        html += `<span class="line">`;
-                        html += `${createIndentGuides(indent + 1)}`;
-                        html += `<span class="json-key">"${escapeHtml(key)}"</span>: `;
-                        html += `<span class="json-bracket">{</span> `;
-                        html += `<span class="collapsible-toggle" data-action="toggle-collapse" data-target="${keyId}">`;
-                        html += `<span class="collapse-icon">▼</span>`;
-                        html += `</span>`;
-                        html += `</span>`;
-                        
-                        html += `<span class="collapsible-group" id="${keyId}">`;
-                        // オブジェクトの中身を再帰的に生成
-                        const valueKeys = Object.keys(value);
-                        valueKeys.forEach((vKey, vIndex) => {
-                            const vComma = vIndex < valueKeys.length - 1 ? ',' : '';
-                            html += `<span class="line">${createIndentGuides(indent + 2)}<span class="json-key">"${escapeHtml(vKey)}"</span>: ${jsonToHtml(value[vKey], indent + 2, false)}${vComma}</span>`;
-                        });
-                        html += `</span>`;
-                        
-                        html += `<span class="collapsed-placeholder" id="${keyId}-placeholder" style="display: none;" data-action="toggle-collapse" data-target="${keyId}">`;
-                        html += `<span class="line">${createIndentGuides(indent + 2)}<span class="expand-trigger">...</span></span>`;
-                        html += `</span>`;
-                        
-                        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-bracket">}</span>${comma}</span>`;
-                    } else {
-                        // 通常のキー
-                        html += `<span class="line">${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1, false)}${comma}</span>`;
-                    }
-                });
-            }
-            
-            html += `<span class="line">${createIndentGuides(indent)}<span class="json-bracket">}</span>${arrayComma}</span>`;
-            return html;
+            // すべての非空オブジェクトは折りたたみ可能
+            return renderCollapsibleObject(obj, indent, arrayComma);
         }
         
         return String(obj);
