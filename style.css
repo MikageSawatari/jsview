@@ -235,11 +235,12 @@ button {
     background-color: white;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    width: 90%;
-    max-width: 800px;
-    max-height: 80vh;
+    width: 94%;
+    height: 94%;
+    margin: 3%;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 .dialog-header {
@@ -288,6 +289,7 @@ button {
     line-height: 1.5;
     white-space: pre-wrap;
     word-wrap: break-word;
+    text-align: left;
 }
 
 /* JSON構文ハイライト */
@@ -359,4 +361,91 @@ button {
 
 .indent-guide-6 {
     background-color: #dfe6e9;
+}
+
+/* 文字列詳細ダイアログ */
+.string-dialog-content {
+    width: 88%;
+    height: 88%;
+    margin: 6%;
+}
+
+#string-display {
+    margin: 0 0 20px 0;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f8f8f8;
+    padding: 15px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.copy-button {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.copy-button:hover {
+    background-color: #45a049;
+}
+
+/* 省略された文字列のスタイル */
+.truncated-string {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+.truncated-string:hover {
+    color: #0066cc;
+}
+
+/* 折りたたみ可能なオブジェクト */
+.collapsible-key {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible-key:hover {
+    text-decoration: underline;
+}
+
+.collapse-icon {
+    display: inline-block;
+    width: 12px;
+    text-align: center;
+    margin-right: 4px;
+    font-family: monospace;
+    color: #666;
+}
+
+.collapsed-content {
+    display: none;
+}
+
+.collapsed-placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+/* 配列の省略表示 */
+.expand-array {
+    cursor: pointer;
+    color: #0066cc;
+    text-decoration: underline;
+}
+
+.expand-array:hover {
+    color: #0052cc;
 }

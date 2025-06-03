@@ -1,0 +1,3 @@
+{"id": 1, "description": "これは30文字を超える非常に長い説明文です。このテキストは省略表示されるはずです。", "short": "短い文字列"}
+{"id": 2, "log": "2024-01-01 10:00:00 ERROR: データベース接続エラーが発生しました。詳細: Connection refused at host:localhost port:5432", "status": "error"}
+{"id": 3, "message": "システムは正常に動作しています。", "details": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}

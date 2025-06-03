@@ -1,0 +1,3 @@
+{"users": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}, {"id": 3, "name": "Charlie"}, {"id": 4, "name": "David"}, {"id": 5, "name": "Eve"}]}
+{"products": [{"id": 101, "name": "商品A", "price": 1000}, {"id": 102, "name": "商品B", "price": 2000}, {"id": 103, "name": "商品C", "price": 3000}, {"id": 104, "name": "商品D", "price": 4000}, {"id": 105, "name": "商品E", "price": 5000}, {"id": 106, "name": "商品F", "price": 6000}]}
+{"logs": [{"timestamp": "2024-01-01", "level": "INFO", "message": "起動"}, {"timestamp": "2024-01-02", "level": "ERROR", "message": "エラー発生"}, {"timestamp": "2024-01-03", "level": "WARN", "message": "警告"}, {"timestamp": "2024-01-04", "level": "INFO", "message": "正常終了"}]}

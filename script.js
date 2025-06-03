@@ -171,10 +171,20 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 配列の場合はJSON文字列として表示
         if (Array.isArray(value)) {
-            return JSON.stringify(value);
+            const jsonStr = JSON.stringify(value);
+            if (jsonStr.length > 30) {
+                return jsonStr.substring(0, 30) + '…';
+            }
+            return jsonStr;
         }
         
-        return String(value);
+        // 文字列の場合は30文字で切る
+        const strValue = String(value);
+        if (strValue.length > 30) {
+            return strValue.substring(0, 30) + '…';
+        }
+        
+        return strValue;
     }
     
     // テーブル作成関数
@@ -211,7 +221,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             allKeys.forEach(key => {
                 const td = document.createElement('td');
-                td.textContent = getNestedValue(item, key);
+                const value = getNestedValue(item, key, true);
+                const displayValue = getNestedValue(item, key);
+                
+                // 文字列が省略されている場合、クリック可能にする
+                if (typeof value === 'string' && value.length > 30) {
+                    td.innerHTML = `<span class="truncated-string" title="クリックして全体を表示">${escapeHtml(displayValue)}</span>`;
+                    td.querySelector('.truncated-string').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showStringDialog(value);
+                    });
+                } else {
+                    td.textContent = displayValue;
+                }
+                
                 row.appendChild(td);
             });
             
@@ -258,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // JSONをHTMLに変換（構文ハイライトとインデントレインボー付き）
-    function jsonToHtml(obj, indent = 0) {
+    function jsonToHtml(obj, indent = 0, inArray = false) {
         let html = '';
         
         if (obj === null) {
@@ -274,6 +297,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (typeof obj === 'string') {
+            if (obj.length > 30) {
+                const truncated = obj.substring(0, 30);
+                const stringId = 'str-' + Math.random().toString(36).substr(2, 9);
+                // 文字列をグローバルに保存
+                window.fullStrings = window.fullStrings || {};
+                window.fullStrings[stringId] = obj;
+                return `<span class="json-string truncated-string" data-string-id="${stringId}" title="クリックして全体を表示">"${escapeHtml(truncated)}…"</span>`;
+            }
             return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
         }
         
@@ -282,14 +313,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `<span class="json-bracket">[]</span>`;
             }
             
+            const arrayId = 'arr-' + Math.random().toString(36).substr(2, 9);
             html += `<span class="json-bracket">[</span>\n`;
-            obj.forEach((item, index) => {
-                html += `${createIndentGuides(indent + 1)}${jsonToHtml(item, indent + 1)}`;
-                if (index < obj.length - 1) {
-                    html += ',';
+            
+            if (obj.length > 3) {
+                // 最初の3要素を表示
+                for (let i = 0; i < 3; i++) {
+                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(obj[i], indent + 1, true)}`;
+                    html += ',\n';
                 }
+                
+                // 省略表示と残りの要素を格納
+                html += `${createIndentGuides(indent + 1)}<span class="expand-array" data-array-id="${arrayId}">… (他${obj.length - 3}要素)</span>`;
+                
+                // 残りの要素（初期状態では非表示）
+                html += `<span id="${arrayId}" style="display: none;">`;
+                for (let i = 3; i < obj.length; i++) {
+                    html += ',\n';
+                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(obj[i], indent + 1, true)}`;
+                }
+                html += `</span>`;
                 html += '\n';
-            });
+            } else {
+                // 3要素以下の場合は通常表示
+                obj.forEach((item, index) => {
+                    html += `${createIndentGuides(indent + 1)}${jsonToHtml(item, indent + 1, true)}`;
+                    if (index < obj.length - 1) {
+                        html += ',';
+                    }
+                    html += '\n';
+                });
+            }
+            
             html += `${createIndentGuides(indent)}<span class="json-bracket">]</span>`;
             return html;
         }
@@ -300,14 +355,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `<span class="json-bracket">{}</span>`;
             }
             
-            html += `<span class="json-bracket">{</span>\n`;
-            keys.forEach((key, index) => {
-                html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(obj[key], indent + 1)}`;
-                if (index < keys.length - 1) {
-                    html += ',';
-                }
-                html += '\n';
-            });
+            const objId = 'obj-' + Math.random().toString(36).substr(2, 9);
+            
+            // 配列内のオブジェクトにも展開ボタンを追加
+            if (inArray && keys.length > 0) {
+                const keyId = objId + '-arr';
+                html += `<span class="json-bracket">{</span> <span class="collapsible-key collapse-icon" data-key-id="${keyId}">▼</span>\n`;
+                html += `<span id="${keyId}-value">`;
+                html += `<span class="object-content" id="${objId}">`;
+                keys.forEach((key, index) => {
+                    const value = obj[key];
+                    html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1)}`;
+                    if (index < keys.length - 1) {
+                        html += ',';
+                    }
+                    html += '\n';
+                });
+                html += `</span>`;
+                html += `</span>`;
+            } else {
+                html += `<span class="json-bracket">{</span>\n`;
+                // オブジェクトの内容を格納するコンテナ
+                html += `<span class="object-content" id="${objId}">`;
+                keys.forEach((key, index) => {
+                    const value = obj[key];
+                    const isObject = value !== null && typeof value === 'object' && !Array.isArray(value);
+                    
+                    if (isObject && Object.keys(value).length > 0) {
+                        // 折りたたみ可能なオブジェクト
+                        const keyId = objId + '-' + index;
+                        const valueHtml = jsonToHtml(value, indent + 1);
+                        // {の後に展開ボタンを挿入
+                        const modifiedValueHtml = valueHtml.replace(
+                            /^<span class="json-bracket">{<\/span>/,
+                            `<span class="json-bracket">{</span> <span class="collapsible-key collapse-icon" data-key-id="${keyId}">▼</span>`
+                        );
+                        html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: <span id="${keyId}-value">${modifiedValueHtml}</span>`;
+                    } else {
+                        // 通常のキー
+                        html += `${createIndentGuides(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span>: ${jsonToHtml(value, indent + 1)}`;
+                    }
+                    
+                    if (index < keys.length - 1) {
+                        html += ',';
+                    }
+                    html += '\n';
+                });
+                html += `</span>`;
+            }
+            
             html += `${createIndentGuides(indent)}<span class="json-bracket">}</span>`;
             return html;
         }
@@ -327,28 +423,165 @@ document.addEventListener('DOMContentLoaded', function() {
         const dialog = document.getElementById('json-dialog');
         const jsonDisplay = document.getElementById('json-display');
         
+        // 文字列をリセット
+        window.fullStrings = {};
+        
         jsonDisplay.innerHTML = jsonToHtml(json);
+        dialog.classList.add('active');
+        
+        // 省略された文字列のクリックイベントを設定
+        setupTruncatedStringHandlers();
+        
+        // 折りたたみ可能なキーのクリックイベントを設定
+        setupCollapsibleHandlers();
+        
+        // 配列の展開リンクのクリックイベントを設定
+        setupArrayExpandHandlers();
+    }
+    
+    // 省略された文字列のクリックハンドラーを設定
+    function setupTruncatedStringHandlers() {
+        const truncatedStrings = document.querySelectorAll('.truncated-string');
+        truncatedStrings.forEach(elem => {
+            elem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const stringId = elem.dataset.stringId;
+                const fullString = window.fullStrings[stringId];
+                if (fullString) {
+                    showStringDialog(fullString);
+                }
+            });
+        });
+    }
+    
+    // 文字列詳細ダイアログを表示
+    function showStringDialog(str) {
+        const dialog = document.getElementById('string-dialog');
+        const stringDisplay = document.getElementById('string-display');
+        
+        stringDisplay.textContent = str;
         dialog.classList.add('active');
     }
     
-    // ダイアログ関連のイベントリスナー
-    const dialog = document.getElementById('json-dialog');
-    const closeButton = dialog.querySelector('.dialog-close');
+    // 折りたたみ可能なキーのハンドラーを設定
+    function setupCollapsibleHandlers() {
+        const collapsibleKeys = document.querySelectorAll('.collapsible-key');
+        collapsibleKeys.forEach(elem => {
+            elem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const keyId = elem.dataset.keyId;
+                const valueElem = document.getElementById(keyId + '-value');
+                const icon = elem.querySelector('.collapse-icon');
+                
+                if (valueElem) {
+                    const isCollapsed = elem.classList.contains('collapsed');
+                    
+                    if (isCollapsed) {
+                        // 展開
+                        elem.classList.remove('collapsed');
+                        const originalContent = elem.dataset.originalContent;
+                        if (originalContent) {
+                            valueElem.innerHTML = originalContent;
+                        }
+                        icon.textContent = '▼';
+                        
+                        // 展開後のハンドラーを再設定
+                        setupTruncatedStringHandlers();
+                        setupCollapsibleHandlers();
+                        setupArrayExpandHandlers();
+                    } else {
+                        // 折りたたむ
+                        elem.classList.add('collapsed');
+                        // 元のコンテンツをデータ属性に保存
+                        elem.dataset.originalContent = valueElem.innerHTML;
+                        valueElem.innerHTML = '<span class="collapsed-placeholder">{...}</span>';
+                        icon.textContent = '▶';
+                    }
+                }
+            });
+        });
+    }
     
-    closeButton.addEventListener('click', () => {
-        dialog.classList.remove('active');
+    // 配列の展開ハンドラーを設定
+    function setupArrayExpandHandlers() {
+        const expandLinks = document.querySelectorAll('.expand-array');
+        expandLinks.forEach(elem => {
+            elem.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const arrayId = elem.dataset.arrayId;
+                const hiddenElements = document.getElementById(arrayId);
+                
+                if (hiddenElements) {
+                    // 省略表示を削除
+                    elem.style.display = 'none';
+                    // 残りの要素を表示
+                    hiddenElements.style.display = 'inline';
+                    
+                    // ハンドラーを再設定
+                    setupTruncatedStringHandlers();
+                    setupCollapsibleHandlers();
+                }
+            });
+        });
+    }
+    
+    // ダイアログ関連のイベントリスナー
+    const jsonDialog = document.getElementById('json-dialog');
+    const stringDialog = document.getElementById('string-dialog');
+    
+    // JSONダイアログのイベント
+    const jsonCloseButton = jsonDialog.querySelector('.dialog-close');
+    jsonCloseButton.addEventListener('click', () => {
+        jsonDialog.classList.remove('active');
     });
     
-    dialog.addEventListener('click', (e) => {
-        if (e.target === dialog) {
-            dialog.classList.remove('active');
+    jsonDialog.addEventListener('click', (e) => {
+        if (e.target === jsonDialog) {
+            jsonDialog.classList.remove('active');
+        }
+    });
+    
+    // 文字列ダイアログのイベント
+    const stringCloseButton = stringDialog.querySelector('.dialog-close');
+    stringCloseButton.addEventListener('click', () => {
+        stringDialog.classList.remove('active');
+    });
+    
+    stringDialog.addEventListener('click', (e) => {
+        if (e.target === stringDialog) {
+            stringDialog.classList.remove('active');
+        }
+    });
+    
+    // コピーボタンのイベント
+    const copyButton = document.getElementById('copy-string-btn');
+    copyButton.addEventListener('click', async () => {
+        const stringDisplay = document.getElementById('string-display');
+        const text = stringDisplay.textContent;
+        
+        try {
+            await navigator.clipboard.writeText(text);
+            copyButton.textContent = 'コピーしました！';
+            setTimeout(() => {
+                copyButton.textContent = 'クリップボードにコピー';
+            }, 2000);
+        } catch (err) {
+            console.error('コピーに失敗しました:', err);
+            copyButton.textContent = 'コピーに失敗しました';
+            setTimeout(() => {
+                copyButton.textContent = 'クリップボードにコピー';
+            }, 2000);
         }
     });
     
     // ESCキーでダイアログを閉じる
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && dialog.classList.contains('active')) {
-            dialog.classList.remove('active');
+        if (e.key === 'Escape') {
+            if (stringDialog.classList.contains('active')) {
+                stringDialog.classList.remove('active');
+            } else if (jsonDialog.classList.contains('active')) {
+                jsonDialog.classList.remove('active');
+            }
         }
     });
 
