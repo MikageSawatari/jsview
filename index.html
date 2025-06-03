@@ -9,17 +9,43 @@
 <body>
     <div class="container">
         <h1>JSON Lines Pretty Printer</h1>
-        <div class="input-section">
-            <label for="input">JSON Lines を入力:</label>
-            <textarea id="input" placeholder='{"name": "John", "age": 30}&#10;{"name": "Jane", "age": 25}'></textarea>
-            <button id="formatBtn">整形</button>
-            <button id="clearBtn">クリア</button>
+        
+        <div class="tabs">
+            <button class="tab-button active" data-tab="input">入力</button>
+            <button class="tab-button" data-tab="table">テーブル</button>
         </div>
-        <div class="output-section">
-            <label>整形結果:</label>
-            <div id="output"></div>
+        
+        <div class="tab-content">
+            <div id="input-tab" class="tab-panel active">
+                <div class="input-section">
+                    <label for="input">JSON Lines を入力:</label>
+                    <textarea id="input" placeholder='{"name": "mikage", "age": 12, "score": {"game": 100, "english": 50}}&#10;{"name": "tomomi", "email": "test@example.com", "score": {"game": 80, "english": 90}}'></textarea>
+                    <button id="formatBtn">整形</button>
+                    <button id="clearBtn">クリア</button>
+                </div>
+            </div>
+            
+            <div id="table-tab" class="tab-panel">
+                <div class="table-section">
+                    <div id="table-container"></div>
+                </div>
+            </div>
         </div>
     </div>
+    
+    <!-- JSONダイアログ -->
+    <div id="json-dialog" class="dialog-overlay">
+        <div class="dialog-content">
+            <div class="dialog-header">
+                <h3>JSON詳細</h3>
+                <button class="dialog-close">&times;</button>
+            </div>
+            <div class="dialog-body">
+                <pre id="json-display"></pre>
+            </div>
+        </div>
+    </div>
+    
     <script src="script.js"></script>
 </body>
 </html>
