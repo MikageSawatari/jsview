@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Lines Pretty Printer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>JSON Lines Pretty Printer</h1>
+        <div class="input-section">
+            <label for="input">JSON Lines を入力:</label>
+            <textarea id="input" placeholder='{"name": "John", "age": 30}&#10;{"name": "Jane", "age": 25}'></textarea>
+            <button id="formatBtn">整形</button>
+            <button id="clearBtn">クリア</button>
+        </div>
+        <div class="output-section">
+            <label>整形結果:</label>
+            <div id="output"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
