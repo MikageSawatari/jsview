@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 非表示列の管理
     const hiddenColumns = new Set();
     const hiddenByParent = new Map(); // 親によって非表示になった列
+    const autoHiddenColumns = new Set(); // 自動的に非表示になった列
     let columnHierarchy = {}; // 列の階層関係
     let flatKeys = []; // フラットなキーリスト（データ表示用）
 
@@ -36,12 +37,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // テーブルタブの場合、bodyとcontainerにクラスを追加
+        const tableControls = document.querySelector('.table-controls');
         if (tabName === 'table') {
             document.body.classList.add('table-tab-active');
             document.querySelector('.container').classList.add('table-tab-active');
+            if (tableControls) tableControls.style.display = 'block';
         } else {
             document.body.classList.remove('table-tab-active');
             document.querySelector('.container').classList.remove('table-tab-active');
+            if (tableControls) tableControls.style.display = 'none';
         }
     }
     
@@ -84,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 非表示列の状態をクリア
             hiddenColumns.clear();
             hiddenByParent.clear();
+            autoHiddenColumns.clear();
             columnHierarchy = {};
             
             // メニューを閉じる
@@ -432,15 +437,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 cellContent.textContent = cell.key;  // 空文字列の場合は空のまま
                 th.appendChild(cellContent);
                 
-                // ×アイコンを追加（すべてのリーフノードに）
-                if (cell.isLeaf || cell.key === '') {
-                    const hideBtn = document.createElement('span');
-                    hideBtn.className = 'column-hide-btn';
-                    hideBtn.innerHTML = '<span class="hide-icon-circle">×</span>';
-                    hideBtn.title = '列を非表示';
-                    hideBtn.dataset.columnPath = cell.fullPath;
-                    th.appendChild(hideBtn);
-                }
+                // ×アイコンを追加（すべての列に）
+                const hideBtn = document.createElement('span');
+                hideBtn.className = 'column-hide-btn';
+                hideBtn.innerHTML = '<span class="hide-icon-circle">×</span>';
+                hideBtn.title = '列を非表示';
+                hideBtn.dataset.columnPath = cell.fullPath;
+                th.appendChild(hideBtn);
                 
                 if (cell.colspan > 1) {
                     th.setAttribute('colspan', cell.colspan);
@@ -504,6 +507,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 列の非表示/再表示イベントを設定
         setupColumnVisibilityEvents();
+        
+        // ＋ボタンの初期状態を設定（非表示列がないのでdisabled）
+        updateShowColumnsButton();
         
         // 横スクロールの同期設定
         setupHorizontalScrollSync();
@@ -615,6 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 非表示列をリセット
         hiddenColumns.clear();
         hiddenByParent.clear();
+        autoHiddenColumns.clear();
         columnHierarchy = {};
     }
 
@@ -650,6 +657,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 列を非表示にする
     function hideColumn(fullPath) {
+        // 手動で非表示にする場合、自動非表示状態を解除
+        autoHiddenColumns.delete(fullPath);
+        if (hiddenByParent.get(fullPath) === 'auto-hidden') {
+            hiddenByParent.delete(fullPath);
+        }
+        
         // 自身を非表示リストに追加
         hiddenColumns.add(fullPath);
         
@@ -674,6 +687,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showColumn(fullPath) {
         // 自身を表示
         hiddenColumns.delete(fullPath);
+        autoHiddenColumns.delete(fullPath);
         
         // 親によって非表示になっていた子列を確認
         const childrenToShow = [];
@@ -694,15 +708,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // 親要素も連動して表示（自動非表示されていた場合）
         const parentPath = getParentPath(fullPath);
         if (parentPath && hiddenColumns.has(parentPath)) {
-            // 親が非表示で、この列を表示することで親も表示可能になる場合
-            const siblings = columnHierarchy[parentPath] || [];
-            const hasVisibleChild = siblings.some(sibling => 
-                sibling === fullPath || !hiddenColumns.has(sibling)
-            );
-            if (hasVisibleChild) {
-                hiddenColumns.delete(parentPath);
-                // 再帰的に上位の親も確認
-                showColumn(parentPath);
+            // 親が自動非表示になっていた場合、解除を検討
+            if (autoHiddenColumns.has(parentPath)) {
+                const siblings = columnHierarchy[parentPath] || [];
+                const hasVisibleChild = siblings.some(sibling => 
+                    sibling === fullPath || !hiddenColumns.has(sibling)
+                );
+                if (hasVisibleChild) {
+                    hiddenColumns.delete(parentPath);
+                    autoHiddenColumns.delete(parentPath);
+                    if (hiddenByParent.get(parentPath) === 'auto-hidden') {
+                        hiddenByParent.delete(parentPath);
+                    }
+                    // 再帰的に上位の親も確認
+                    showColumn(parentPath);
+                }
             }
         }
         
@@ -763,9 +783,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 子が全て非表示の親を自動的に非表示にする
     function updateParentVisibility() {
-        // 自動的に非表示になった親を記録
-        const autoHiddenParents = new Set();
-        
         // 親子関係を逆引き
         const parentToChildren = {};
         Object.entries(columnHierarchy).forEach(([parent, children]) => {
@@ -777,12 +794,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (children.length > 0) {
                 const allChildrenHidden = children.every(child => hiddenColumns.has(child));
                 if (allChildrenHidden && !hiddenColumns.has(parent)) {
-                    // 子が全て非表示だが親は表示されている場合、親も非表示に
+                    // 子が全て非表示だが親は表示されている場合、親も自動非表示に
                     hiddenColumns.add(parent);
-                    autoHiddenParents.add(parent);
+                    autoHiddenColumns.add(parent);
                     // 親による非表示として記録
                     if (!hiddenByParent.has(parent)) {
                         hiddenByParent.set(parent, 'auto-hidden');
+                    }
+                } else if (!allChildrenHidden && autoHiddenColumns.has(parent)) {
+                    // 子が表示されていて、親が自動非表示の場合、自動非表示を解除
+                    hiddenColumns.delete(parent);
+                    autoHiddenColumns.delete(parent);
+                    if (hiddenByParent.get(parent) === 'auto-hidden') {
+                        hiddenByParent.delete(parent);
                     }
                 }
             }
@@ -878,8 +902,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // ユーザーが直接非表示にした列のみ表示
-        const userHiddenColumns = Array.from(hiddenColumns).filter(path => !hiddenByParent.has(path));
+        // ユーザーが直接非表示にした列のみ表示（自動非表示と親による非表示を除外）
+        const userHiddenColumns = Array.from(hiddenColumns).filter(path => 
+            !hiddenByParent.has(path) && !autoHiddenColumns.has(path)
+        );
         
         userHiddenColumns.forEach(path => {
             const item = document.createElement('div');

@@ -155,10 +155,14 @@ button {
     font-style: italic;
 }
 
+.tabs-container {
+    position: relative;
+    margin-bottom: 10px;
+}
+
 .tabs {
     display: flex;
     gap: 5px;
-    margin-bottom: 10px;
     border-bottom: 2px solid #e0e0e0;
     flex-shrink: 0;
 }
@@ -246,8 +250,9 @@ button {
 .table-controls {
     position: absolute;
     right: 10px;
-    top: 10px;
+    top: 5px;  /* タブコンテナ内で適切な位置に配置 */
     z-index: 50;
+    display: none;  /* 初期状態では非表示 */
 }
 
 #table-container {
@@ -315,7 +320,9 @@ body.table-tab-active {
     top: 0;
     z-index: 10;
     min-width: 150px;
-    min-height: 40px;  /* ×ボタンが収まる高さを確保 */
+    min-height: 42px;  /* 空文字列でも高さを確保 */
+    height: 42px;  /* 固定高さを設定 */
+    line-height: 22px;  /* 垂直方向の中央揃えを調整 */
 }
 
 /* 複数行ヘッダの固定 - 画面に対してスティッキー */
@@ -679,6 +686,13 @@ body.table-tab-active {
 
 #table-container th {
     position: relative;
+    vertical-align: middle;  /* セル内容の垂直中央揃え */
+}
+
+/* 空文字列のヘッダセルでも高さを維持 */
+#table-container th span:first-child:empty::before {
+    content: '\00a0';  /* 非破壊スペースで高さを確保 */
+    display: inline-block;
 }
 
 /* ＋ボタン */

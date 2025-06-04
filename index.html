@@ -10,9 +10,21 @@
     <div class="container">
         <h1>JSON Lines Pretty Printer</h1>
         
-        <div class="tabs">
-            <button class="tab-button active" data-tab="input">入力</button>
-            <button class="tab-button" data-tab="table">テーブル</button>
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="input">入力</button>
+                <button class="tab-button" data-tab="table">テーブル</button>
+            </div>
+            <!-- 列の再表示ボタン（タブの外側に配置） -->
+            <div class="table-controls">
+                <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
+                    <span class="plus-icon">+</span>
+                </button>
+                <div id="hidden-columns-menu" class="hidden-columns-menu">
+                    <div class="menu-header">非表示の列</div>
+                    <div id="hidden-columns-list" class="hidden-columns-list"></div>
+                </div>
+            </div>
         </div>
         
         <div class="tab-content">
@@ -27,16 +39,6 @@
             
             <div id="table-tab" class="tab-panel">
                 <div class="table-section">
-                    <!-- 列の再表示ボタン -->
-                    <div class="table-controls">
-                        <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
-                            <span class="plus-icon">+</span>
-                        </button>
-                        <div id="hidden-columns-menu" class="hidden-columns-menu">
-                            <div class="menu-header">非表示の列</div>
-                            <div id="hidden-columns-list" class="hidden-columns-list"></div>
-                        </div>
-                    </div>
                     <div id="table-container"></div>
                 </div>
             </div>
