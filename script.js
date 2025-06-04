@@ -71,21 +71,158 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // すべてのキーを収集（ネストされたキーは.で結合）
-    function collectAllKeys(data) {
-        const keys = new Set();
-        const objectOnlyKeys = new Set();
+    // KeyNodeクラス：階層ツリーのノード
+    class KeyNode {
+        constructor(key) {
+            this.key = key;
+            this.children = {};
+            this.isLeaf = true;
+            this.hasDirectValue = false; // 直接値を持つかどうか
+            this.colspan = 1;
+            this.rowspan = 1;
+            this.depth = 0;
+        }
+    }
+    
+    // キーパスから階層ツリーを構築
+    function buildKeyTree(allKeyPaths) {
+        const root = new KeyNode('root');
         
+        allKeyPaths.forEach(pathInfo => {
+            const path = pathInfo.path;
+            const hasDirectValue = pathInfo.hasDirectValue || false;
+            let current = root;
+            const parts = path.split('.');
+            
+            parts.forEach((part, index) => {
+                if (!current.children[part]) {
+                    current.children[part] = new KeyNode(part);
+                    current.isLeaf = false;
+                }
+                current = current.children[part];
+                current.depth = index + 1;
+                
+                // 最後のパートで直接値を持つ場合
+                if (index === parts.length - 1 && hasDirectValue) {
+                    current.hasDirectValue = true;
+                }
+            });
+        });
+        
+        return root;
+    }
+    
+    // colspan/rowspan計算
+    function calculateSpans(node, maxDepth) {
+        if (node.isLeaf && !node.hasDirectValue) {
+            node.rowspan = maxDepth - node.depth + 1;
+            return 1; // リーフのcolspanは1
+        }
+        
+        let totalColspan = 0;
+        
+        // 直接値を持つ場合、値用の列を追加
+        if (node.hasDirectValue) {
+            totalColspan = 1;
+            // 値用の仮想ノードを作成
+            if (!node.children['']) {
+                node.children[''] = new KeyNode('');
+                node.children[''].depth = node.depth + 1;
+                node.children[''].rowspan = maxDepth - node.depth;
+            }
+        }
+        
+        Object.values(node.children).forEach(child => {
+            if (child.key !== '') { // 値用ノード以外
+                totalColspan += calculateSpans(child, maxDepth);
+            }
+        });
+        
+        node.colspan = totalColspan;
+        return totalColspan;
+    }
+    
+    // ヘッダ行の生成
+    function generateHeaderRows(root, maxDepth) {
+        const rows = Array(maxDepth).fill(null).map(() => []);
+        
+        function traverse(node, depth, parentPath = '') {
+            if (depth > 0) { // rootノードは除外
+                const fullPath = parentPath ? `${parentPath}.${node.key}` : node.key;
+                rows[depth - 1].push({
+                    key: node.key,
+                    fullPath: fullPath,
+                    colspan: node.colspan,
+                    rowspan: node.rowspan,
+                    isLeaf: node.isLeaf && !node.hasDirectValue,
+                    hasDirectValue: node.hasDirectValue
+                });
+            }
+            
+            if (!node.isLeaf || node.hasDirectValue) {
+                const currentPath = depth === 0 ? '' : (parentPath ? `${parentPath}.${node.key}` : node.key);
+                Object.values(node.children).forEach(child => {
+                    traverse(child, depth + 1, currentPath);
+                });
+            }
+        }
+        
+        traverse(root, 0);
+        return rows;
+    }
+    
+    // すべてのキーを収集（階層情報を保持）
+    function collectAllKeys(data) {
+        const keyPaths = [];
+        const keySet = new Set();
+        const keyTypes = {}; // キーごとの型情報を保存
+        
+        // キーの型情報を収集
+        function analyzeKeyTypes(obj, prefix = '') {
+            for (const key in obj) {
+                const fullKey = prefix ? `${prefix}.${key}` : key;
+                const value = obj[key];
+                
+                if (!keyTypes[fullKey]) {
+                    keyTypes[fullKey] = { hasDirectValue: false, hasObject: false };
+                }
+                
+                if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                    keyTypes[fullKey].hasObject = true;
+                    analyzeKeyTypes(value, fullKey);
+                } else {
+                    keyTypes[fullKey].hasDirectValue = true;
+                }
+            }
+        }
+        
+        // すべてのデータから型情報を収集
+        data.forEach(item => analyzeKeyTypes(item));
+        
+        // キーパスを収集
         function extractKeys(obj, prefix = '') {
             for (const key in obj) {
                 const fullKey = prefix ? `${prefix}.${key}` : key;
+                const value = obj[key];
                 
-                if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+                // このキーが値とオブジェクトの両方を持つ場合
+                if (keyTypes[fullKey].hasDirectValue && keyTypes[fullKey].hasObject) {
+                    // 値用のパスを追加
+                    if (!keySet.has(fullKey)) {
+                        keyPaths.push({ path: fullKey, hasDirectValue: true });
+                        keySet.add(fullKey);
+                    }
+                }
+                
+                if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
                     // オブジェクトの場合は再帰的に処理
-                    extractKeys(obj[key], fullKey);
+                    extractKeys(value, fullKey);
                 } else {
-                    // プリミティブ値または配列の場合のみキーを追加
-                    keys.add(fullKey);
+                    // プリミティブ値または配列の場合
+                    if (!keySet.has(fullKey)) {
+                        keyPaths.push({ path: fullKey, hasDirectValue: false });
+                        keySet.add(fullKey);
+                    }
                 }
             }
         }
@@ -93,67 +230,45 @@ document.addEventListener('DOMContentLoaded', function() {
         // すべてのデータからキーを抽出
         data.forEach(item => extractKeys(item));
         
-        // オブジェクトのみを含むキーをチェック
-        const allPossibleKeys = new Set();
-        function collectAllPossibleKeys(obj, prefix = '') {
-            for (const key in obj) {
-                const fullKey = prefix ? `${prefix}.${key}` : key;
-                allPossibleKeys.add(fullKey);
-                
-                if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-                    collectAllPossibleKeys(obj[key], fullKey);
-                }
-            }
-        }
-        
-        data.forEach(item => collectAllPossibleKeys(item));
-        
-        // すべてのデータでオブジェクトのみのキーを特定
-        allPossibleKeys.forEach(key => {
-            let isAlwaysObject = true;
-            let hasValue = false;
-            
-            data.forEach(item => {
-                const value = getNestedValue(item, key, true);
-                if (value !== undefined) {
-                    hasValue = true;
-                    if (!(value !== null && typeof value === 'object' && !Array.isArray(value))) {
-                        isAlwaysObject = false;
-                    }
-                }
-            });
-            
-            if (hasValue && isAlwaysObject) {
-                objectOnlyKeys.add(key);
-            }
-        });
-        
-        // オブジェクトのみのキーを除外
-        const filteredKeys = Array.from(keys).filter(key => {
-            // このキーの親キーがオブジェクトのみのキーでないことを確認
-            const parts = key.split('.');
-            for (let i = 1; i <= parts.length; i++) {
-                const parentKey = parts.slice(0, i).join('.');
-                if (objectOnlyKeys.has(parentKey)) {
-                    return true; // 親がオブジェクトのみでも、子は表示
-                }
-            }
-            return true;
-        });
-        
-        return filteredKeys.sort();
+        return keyPaths;
     }
     
     // ネストされたオブジェクトから値を取得
     function getNestedValue(obj, path, returnRaw = false) {
-        const keys = path.split('.');
-        let value = obj;
+        let value;
         
-        for (const key of keys) {
-            if (value === null || value === undefined) {
+        // 値用ノードの場合（パスが"." で終わる場合）
+        if (path.endsWith('.')) {
+            const realPath = path.slice(0, -1);
+            if (realPath === '') {
+                // ルートレベルの値は存在しない
                 return returnRaw ? undefined : '';
             }
-            value = value[key];
+            const keys = realPath.split('.');
+            value = obj;
+            
+            for (const key of keys) {
+                if (value === null || value === undefined) {
+                    return returnRaw ? undefined : '';
+                }
+                value = value[key];
+            }
+            
+            // このキーがオブジェクトの場合は値ではない
+            if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                return returnRaw ? undefined : '';
+            }
+        } else {
+            // 通常のパスの場合
+            const keys = path.split('.');
+            value = obj;
+            
+            for (const key of keys) {
+                if (value === null || value === undefined) {
+                    return returnRaw ? undefined : '';
+                }
+                value = value[key];
+            }
         }
         
         if (returnRaw) {
@@ -194,22 +309,75 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const allKeys = collectAllKeys(parsedData);
+        const allKeyPaths = collectAllKeys(parsedData);
+        
+        // キーツリーを構築
+        const keyTree = buildKeyTree(allKeyPaths);
+        
+        // 最大深さを計算
+        let maxDepth = 0;
+        function findMaxDepth(node) {
+            if (node.isLeaf && !node.hasDirectValue) {
+                return node.depth;
+            }
+            let max = node.depth;
+            Object.values(node.children).forEach(child => {
+                max = Math.max(max, findMaxDepth(child));
+            });
+            return max;
+        }
+        maxDepth = findMaxDepth(keyTree);
+        
+        // colspan/rowspanを計算
+        calculateSpans(keyTree, maxDepth);
+        
+        // ヘッダ行を生成
+        const headerRows = generateHeaderRows(keyTree, maxDepth);
+        
+        // フラットなキーリストを作成（データ表示用）
+        const flatKeys = [];
+        function collectFlatKeys(rows) {
+            // すべての行をチェックして、リーフノードを収集
+            rows.forEach((row, rowIndex) => {
+                row.forEach(cell => {
+                    // リーフノードまたは値用ノードで、かつこのセルが最終行まで延びている場合
+                    if ((cell.isLeaf || cell.key === '') && 
+                        (rowIndex + cell.rowspan === rows.length)) {
+                        flatKeys.push(cell.fullPath);
+                    }
+                });
+            });
+        }
+        if (headerRows.length > 0) {
+            collectFlatKeys(headerRows);
+        }
         
         // テーブル要素の作成
         const table = document.createElement('table');
         
         // ヘッダー行の作成
         const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
         
-        allKeys.forEach(key => {
-            const th = document.createElement('th');
-            th.textContent = key;
-            headerRow.appendChild(th);
+        headerRows.forEach(rowCells => {
+            const headerRow = document.createElement('tr');
+            
+            rowCells.forEach(cell => {
+                const th = document.createElement('th');
+                th.textContent = cell.key;
+                
+                if (cell.colspan > 1) {
+                    th.setAttribute('colspan', cell.colspan);
+                }
+                if (cell.rowspan > 1) {
+                    th.setAttribute('rowspan', cell.rowspan);
+                }
+                
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
         });
         
-        thead.appendChild(headerRow);
         table.appendChild(thead);
         
         // データ行の作成
@@ -219,7 +387,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const row = document.createElement('tr');
             row.dataset.index = index;
             
-            allKeys.forEach(key => {
+            flatKeys.forEach(key => {
                 const td = document.createElement('td');
                 const value = getNestedValue(item, key, true);
                 const displayValue = getNestedValue(item, key);
