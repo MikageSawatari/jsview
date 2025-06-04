@@ -468,8 +468,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const sw = document.getElementById('horizontal-scroll-wrapper');
         const sc = document.getElementById('horizontal-scroll-content');
         
-        // テーブルの実際の幅を取得
-        const table = tc.querySelector('table');
+        // テーブルの実際の幅を取得（既に上で取得済みなので再利用）
         if (!table) return;
         
         // 少し遅延してサイズを取得（レンダリング完了を待つ）
