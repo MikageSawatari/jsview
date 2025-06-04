@@ -28,6 +28,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 panel.classList.remove('active');
             }
         });
+        
+        // テーブルタブの場合、bodyとcontainerにクラスを追加
+        if (tabName === 'table') {
+            document.body.classList.add('table-tab-active');
+            document.querySelector('.container').classList.add('table-tab-active');
+        } else {
+            document.body.classList.remove('table-tab-active');
+            document.querySelector('.container').classList.remove('table-tab-active');
+        }
     }
     
     // タブボタンのイベントリスナー

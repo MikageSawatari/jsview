@@ -9,16 +9,27 @@ body {
     background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* テーブルタブが選択されている場合のbody */
+body.table-tab-active {
+    overflow-y: auto;
 }
 
 .container {
     width: 100%;
-    height: 100%;
+    min-height: 100vh;
     padding: 1vh 3vw 3vh 3vw;
     display: flex;
     flex-direction: column;
+}
+
+/* テーブルタブが選択されている場合 */
+.container.table-tab-active {
+    height: auto;
 }
 
 h1 {
@@ -142,6 +153,12 @@ button {
     margin-bottom: 10px;
     border-bottom: 2px solid #e0e0e0;
     flex-shrink: 0;
+    background-color: #f5f5f5;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding-top: 10px;
+    margin-top: -10px;
 }
 
 .tab-button {
@@ -181,9 +198,10 @@ button {
 
 /* テーブルタブの場合は全画面を使用 */
 #table-tab .tab-content {
-    flex: none;
+    flex: 1;
     overflow: visible;
     height: auto;
+    min-height: 0;
 }
 
 .tab-panel {
@@ -201,6 +219,9 @@ button {
 #table-tab.tab-panel.active {
     overflow: visible;
     height: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .table-section {
@@ -234,37 +255,37 @@ button {
     min-width: 150px;
 }
 
-/* 複数行ヘッダの固定 */
-#table-container thead {
+/* 複数行ヘッダの固定 - タブの高さを考慮 */
+.table-tab-active #table-container thead {
     position: sticky;
-    top: 0;
+    top: 52px; /* タブの高さ分オフセット */
     z-index: 20;
 }
 
-#table-container thead tr {
+.table-tab-active #table-container th {
     position: sticky;
-    top: 0;
+    top: 52px;
 }
 
 /* 各ヘッダ行の位置調整 */
-#table-container thead tr:nth-child(1) {
-    top: 0;
+.table-tab-active #table-container thead tr:nth-child(1) th {
+    top: 52px;
 }
 
-#table-container thead tr:nth-child(2) {
-    top: 42px; /* ヘッダの高さに応じて調整 */
+.table-tab-active #table-container thead tr:nth-child(2) th {
+    top: 94px; /* 52px + 42px */
 }
 
-#table-container thead tr:nth-child(3) {
-    top: 84px;
+.table-tab-active #table-container thead tr:nth-child(3) th {
+    top: 136px; /* 52px + 84px */
 }
 
-#table-container thead tr:nth-child(4) {
-    top: 126px;
+.table-tab-active #table-container thead tr:nth-child(4) th {
+    top: 178px; /* 52px + 126px */
 }
 
-#table-container thead tr:nth-child(5) {
-    top: 168px;
+.table-tab-active #table-container thead tr:nth-child(5) th {
+    top: 220px; /* 52px + 168px */
 }
 
 #table-container td {
