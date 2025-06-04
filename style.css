@@ -250,18 +250,38 @@ button {
     position: relative;
 }
 
-/* 横スクロールバーを画面下部に固定 */
-.table-tab-active .table-section {
-    padding-bottom: 20px; /* スクロールバーの高さ分の余白 */
+/* 横スクロール専用エリア */
+.horizontal-scroll-wrapper {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: rgba(255, 255, 255, 0.9);
+    border-top: 1px solid #ddd;
+    z-index: 100;
 }
 
-.table-tab-active #table-container {
-    position: sticky;
-    bottom: 0;
+.table-tab-active .horizontal-scroll-wrapper {
+    display: block;
+}
+
+#horizontal-scroll-content {
+    height: 1px;
+    background: transparent;
+}
+
+/* テーブルタブの場合、下部に余白を追加 */
+.table-tab-active .table-section {
+    padding-bottom: 30px; /* スクロールバーの高さ分の余白 */
 }
 
 #table-container table {
-    width: 100%;
+    width: max-content;
+    min-width: 100%;
     border-collapse: collapse;
     font-size: 14px;
 }

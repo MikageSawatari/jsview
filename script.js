@@ -428,6 +428,50 @@ document.addEventListener('DOMContentLoaded', function() {
         // テーブルをコンテナに追加
         tableContainer.innerHTML = '';
         tableContainer.appendChild(table);
+        
+        // 横スクロールの同期設定
+        setupHorizontalScrollSync();
+    }
+    
+    // 横スクロールの同期設定
+    function setupHorizontalScrollSync() {
+        const tableContainer = document.getElementById('table-container');
+        const scrollWrapper = document.getElementById('horizontal-scroll-wrapper');
+        const scrollContent = document.getElementById('horizontal-scroll-content');
+        
+        if (!tableContainer || !scrollWrapper || !scrollContent) return;
+        
+        // テーブルの実際の幅を取得
+        const table = tableContainer.querySelector('table');
+        if (!table) return;
+        
+        const tableWidth = table.offsetWidth;
+        const containerWidth = tableContainer.offsetWidth;
+        
+        // スクロールが必要な場合のみ表示
+        if (tableWidth > containerWidth) {
+            // スクロールコンテンツの幅を設定
+            scrollContent.style.width = tableWidth + 'px';
+            
+            // スクロールイベントの同期
+            let syncing = false;
+            
+            tableContainer.addEventListener('scroll', () => {
+                if (!syncing) {
+                    syncing = true;
+                    scrollWrapper.scrollLeft = tableContainer.scrollLeft;
+                    syncing = false;
+                }
+            });
+            
+            scrollWrapper.addEventListener('scroll', () => {
+                if (!syncing) {
+                    syncing = true;
+                    tableContainer.scrollLeft = scrollWrapper.scrollLeft;
+                    syncing = false;
+                }
+            });
+        }
     }
 
     function clearAll() {
@@ -743,4 +787,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 初期状態の設定
     tableContainer.innerHTML = '';
+    
+    // ウィンドウリサイズ時に横スクロールを再設定
+    window.addEventListener('resize', () => {
+        if (document.body.classList.contains('table-tab-active')) {
+            setupHorizontalScrollSync();
+        }
+    });
 });
