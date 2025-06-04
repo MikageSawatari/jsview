@@ -441,37 +441,57 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!tableContainer || !scrollWrapper || !scrollContent) return;
         
+        // 既存のイベントリスナーを削除
+        const newTableContainer = tableContainer.cloneNode(true);
+        tableContainer.parentNode.replaceChild(newTableContainer, tableContainer);
+        const newScrollWrapper = scrollWrapper.cloneNode(true);
+        scrollWrapper.parentNode.replaceChild(newScrollWrapper, scrollWrapper);
+        
+        // 要素を再取得
+        const tc = document.getElementById('table-container');
+        const sw = document.getElementById('horizontal-scroll-wrapper');
+        const sc = document.getElementById('horizontal-scroll-content');
+        
         // テーブルの実際の幅を取得
-        const table = tableContainer.querySelector('table');
+        const table = tc.querySelector('table');
         if (!table) return;
         
-        const tableWidth = table.offsetWidth;
-        const containerWidth = tableContainer.offsetWidth;
-        
-        // スクロールが必要な場合のみ表示
-        if (tableWidth > containerWidth) {
-            // スクロールコンテンツの幅を設定
-            scrollContent.style.width = tableWidth + 'px';
+        // 少し遅延してサイズを取得（レンダリング完了を待つ）
+        setTimeout(() => {
+            const tableWidth = table.scrollWidth;
+            const containerWidth = tc.clientWidth;
             
-            // スクロールイベントの同期
-            let syncing = false;
-            
-            tableContainer.addEventListener('scroll', () => {
-                if (!syncing) {
-                    syncing = true;
-                    scrollWrapper.scrollLeft = tableContainer.scrollLeft;
-                    syncing = false;
-                }
-            });
-            
-            scrollWrapper.addEventListener('scroll', () => {
-                if (!syncing) {
-                    syncing = true;
-                    tableContainer.scrollLeft = scrollWrapper.scrollLeft;
-                    syncing = false;
-                }
-            });
-        }
+            // スクロールが必要な場合のみ表示
+            if (tableWidth > containerWidth) {
+                // スクロールコンテンツの幅を設定
+                sc.style.width = tableWidth + 'px';
+                
+                // 横スクロールバーを表示
+                sw.style.display = 'block';
+                
+                // スクロールイベントの同期
+                let syncing = false;
+                
+                tc.addEventListener('scroll', () => {
+                    if (!syncing) {
+                        syncing = true;
+                        sw.scrollLeft = tc.scrollLeft;
+                        syncing = false;
+                    }
+                });
+                
+                sw.addEventListener('scroll', () => {
+                    if (!syncing) {
+                        syncing = true;
+                        tc.scrollLeft = sw.scrollLeft;
+                        syncing = false;
+                    }
+                });
+            } else {
+                // スクロールが不要な場合は非表示
+                sw.style.display = 'none';
+            }
+        }, 100);
     }
 
     function clearAll() {

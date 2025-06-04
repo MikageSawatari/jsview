@@ -257,15 +257,16 @@ button {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 20px;
+    height: 25px;
     overflow-x: auto;
     overflow-y: hidden;
-    background: rgba(255, 255, 255, 0.9);
-    border-top: 1px solid #ddd;
-    z-index: 100;
+    background: rgba(255, 255, 255, 0.95);
+    border-top: 2px solid #ddd;
+    z-index: 1000;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
 }
 
-.table-tab-active .horizontal-scroll-wrapper {
+body.table-tab-active .horizontal-scroll-wrapper {
     display: block;
 }
 
@@ -275,8 +276,8 @@ button {
 }
 
 /* テーブルタブの場合、下部に余白を追加 */
-.table-tab-active .table-section {
-    padding-bottom: 30px; /* スクロールバーの高さ分の余白 */
+body.table-tab-active {
+    padding-bottom: 35px; /* スクロールバーの高さ分の余白 */
 }
 
 #table-container table {
