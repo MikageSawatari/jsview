@@ -441,11 +441,27 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!tableContainer || !scrollWrapper || !scrollContent) return;
         
-        // 既存のイベントリスナーを削除
-        const newTableContainer = tableContainer.cloneNode(true);
-        tableContainer.parentNode.replaceChild(newTableContainer, tableContainer);
-        const newScrollWrapper = scrollWrapper.cloneNode(true);
-        scrollWrapper.parentNode.replaceChild(newScrollWrapper, scrollWrapper);
+        // 既存のイベントリスナーを削除するため、要素を再作成
+        // ただし、テーブルの内容は保持する
+        const table = tableContainer.querySelector('table');
+        if (!table) return;
+        
+        // スクロールコンテナのみ再作成（内容は保持）
+        const parent = tableContainer.parentNode;
+        const newTableContainer = document.createElement('div');
+        newTableContainer.id = 'table-container';
+        newTableContainer.appendChild(table);
+        parent.replaceChild(newTableContainer, tableContainer);
+        
+        // 横スクロールバーも同様に再作成
+        const scrollParent = scrollWrapper.parentNode;
+        const newScrollWrapper = document.createElement('div');
+        newScrollWrapper.id = 'horizontal-scroll-wrapper';
+        newScrollWrapper.className = 'horizontal-scroll-wrapper';
+        const newScrollContent = document.createElement('div');
+        newScrollContent.id = 'horizontal-scroll-content';
+        newScrollWrapper.appendChild(newScrollContent);
+        scrollParent.replaceChild(newScrollWrapper, scrollWrapper);
         
         // 要素を再取得
         const tc = document.getElementById('table-container');
@@ -510,6 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
         inputElement.value = '';
         tableContainer.innerHTML = '';
         parsedData = [];
+        // 横スクロールバーを非表示
+        const scrollWrapper = document.getElementById('horizontal-scroll-wrapper');
+        if (scrollWrapper) {
+            scrollWrapper.style.display = 'none';
+        }
         switchTab('input');
     }
 
