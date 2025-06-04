@@ -426,8 +426,10 @@ document.addEventListener('DOMContentLoaded', function() {
         table.appendChild(tbody);
         
         // テーブルをコンテナに追加
-        tableContainer.innerHTML = '';
-        tableContainer.appendChild(table);
+        // setupHorizontalScrollSyncで要素が置き換えられるため、毎回取得
+        const currentTableContainer = document.getElementById('table-container');
+        currentTableContainer.innerHTML = '';
+        currentTableContainer.appendChild(table);
         
         // 横スクロールの同期設定
         setupHorizontalScrollSync();
@@ -523,7 +525,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function clearAll() {
         inputElement.value = '';
-        tableContainer.innerHTML = '';
+        // setupHorizontalScrollSyncで要素が置き換えられるため、毎回取得
+        const currentTableContainer = document.getElementById('table-container');
+        if (currentTableContainer) {
+            currentTableContainer.innerHTML = '';
+        }
         parsedData = [];
         // 横スクロールバーを非表示
         const scrollWrapper = document.getElementById('horizontal-scroll-wrapper');
@@ -838,7 +844,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 初期状態の設定
-    tableContainer.innerHTML = '';
+    const initialTableContainer = document.getElementById('table-container');
+    if (initialTableContainer) {
+        initialTableContainer.innerHTML = '';
+    }
     
     // ウィンドウリサイズ時に横スクロールを再設定
     window.addEventListener('resize', () => {
