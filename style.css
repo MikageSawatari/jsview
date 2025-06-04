@@ -15,8 +15,10 @@ body {
 
 /* テーブルタブが選択されている場合のbody */
 body.table-tab-active {
-    height: 100vh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .container {
@@ -199,8 +201,8 @@ button {
 /* テーブルタブの場合は全画面を使用 */
 #table-tab .tab-content {
     flex: 1;
-    overflow: hidden;
-    height: 100%;
+    overflow: visible;
+    height: auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -226,7 +228,7 @@ button {
 /* テーブルタブの場合は全体スクロール */
 #table-tab.tab-panel.active {
     overflow: visible;
-    height: calc(100vh - 120px);
+    height: auto;
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -234,8 +236,7 @@ button {
 
 .table-section {
     width: 100%;
-    height: 100%;
-    overflow: auto;
+    height: auto;
     display: flex;
     flex-direction: column;
     position: relative;
@@ -243,9 +244,20 @@ button {
 
 #table-container {
     width: 100%;
-    height: 100%;
-    overflow: auto;
+    height: auto;
+    overflow-x: auto;
+    overflow-y: visible;
     position: relative;
+}
+
+/* 横スクロールバーを画面下部に固定 */
+.table-tab-active .table-section {
+    padding-bottom: 20px; /* スクロールバーの高さ分の余白 */
+}
+
+.table-tab-active #table-container {
+    position: sticky;
+    bottom: 0;
 }
 
 #table-container table {
@@ -266,37 +278,37 @@ button {
     min-width: 150px;
 }
 
-/* 複数行ヘッダの固定 - コンテナ内でのスクロール */
-#table-container thead {
+/* 複数行ヘッダの固定 - 画面に対してスティッキー */
+.table-tab-active #table-container thead {
     position: sticky;
     top: 0;
     z-index: 20;
 }
 
-#table-container th {
+.table-tab-active #table-container th {
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
 /* 各ヘッダ行の位置調整 */
-#table-container thead tr:nth-child(1) th {
+.table-tab-active #table-container thead tr:nth-child(1) th {
     top: 0;
 }
 
-#table-container thead tr:nth-child(2) th {
+.table-tab-active #table-container thead tr:nth-child(2) th {
     top: 42px;
 }
 
-#table-container thead tr:nth-child(3) th {
+.table-tab-active #table-container thead tr:nth-child(3) th {
     top: 84px;
 }
 
-#table-container thead tr:nth-child(4) th {
+.table-tab-active #table-container thead tr:nth-child(4) th {
     top: 126px;
 }
 
-#table-container thead tr:nth-child(5) th {
+.table-tab-active #table-container thead tr:nth-child(5) th {
     top: 168px;
 }
 
