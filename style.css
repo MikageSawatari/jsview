@@ -16,7 +16,7 @@ body {
 .container {
     width: 100%;
     height: 100%;
-    padding: 3vh 3vw;
+    padding: 1vh 3vw 3vh 3vw;
     display: flex;
     flex-direction: column;
 }
@@ -179,6 +179,13 @@ button {
     flex-direction: column;
 }
 
+/* テーブルタブの場合は全画面を使用 */
+#table-tab .tab-content {
+    flex: none;
+    overflow: visible;
+    height: auto;
+}
+
 .tab-panel {
     display: none;
     height: 100%;
@@ -190,17 +197,23 @@ button {
     flex-direction: column;
 }
 
+/* テーブルタブの場合は全体スクロール */
+#table-tab.tab-panel.active {
+    overflow: visible;
+    height: auto;
+}
+
 .table-section {
     width: 100%;
-    height: 100%;
-    overflow: auto;
+    height: auto;
+    overflow: visible;
     display: flex;
     flex-direction: column;
 }
 
 #table-container {
     flex: 1;
-    overflow: auto;
+    overflow: visible;
 }
 
 #table-container table {
@@ -218,6 +231,40 @@ button {
     position: sticky;
     top: 0;
     z-index: 10;
+    min-width: 150px;
+}
+
+/* 複数行ヘッダの固定 */
+#table-container thead {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+#table-container thead tr {
+    position: sticky;
+    top: 0;
+}
+
+/* 各ヘッダ行の位置調整 */
+#table-container thead tr:nth-child(1) {
+    top: 0;
+}
+
+#table-container thead tr:nth-child(2) {
+    top: 42px; /* ヘッダの高さに応じて調整 */
+}
+
+#table-container thead tr:nth-child(3) {
+    top: 84px;
+}
+
+#table-container thead tr:nth-child(4) {
+    top: 126px;
+}
+
+#table-container thead tr:nth-child(5) {
+    top: 168px;
 }
 
 #table-container td {
@@ -227,13 +274,17 @@ button {
     max-width: 300px;
 }
 
-#table-container tr:hover {
-    background-color: #f5f5f5;
+#table-container tbody tr:hover {
+    background-color: #e8f4f8;
     cursor: pointer;
 }
 
-#table-container tr:nth-child(even) {
+#table-container tbody tr:nth-child(even) {
     background-color: #fafafa;
+}
+
+#table-container tbody tr:nth-child(even):hover {
+    background-color: #e0ecf0;
 }
 
 /* ダイアログスタイル */
