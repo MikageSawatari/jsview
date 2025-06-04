@@ -680,14 +680,44 @@ document.addEventListener('DOMContentLoaded', function() {
             showColumn(child);
         });
         
+        // 親要素も連動して表示（自動非表示されていた場合）
+        const parentPath = getParentPath(fullPath);
+        if (parentPath && hiddenColumns.has(parentPath)) {
+            // 親が非表示で、この列を表示することで親も表示可能になる場合
+            const siblings = columnHierarchy[parentPath] || [];
+            const hasVisibleChild = siblings.some(sibling => 
+                sibling === fullPath || !hiddenColumns.has(sibling)
+            );
+            if (hasVisibleChild) {
+                hiddenColumns.delete(parentPath);
+                // 再帰的に上位の親も確認
+                showColumn(parentPath);
+            }
+        }
+        
         // 表示を更新
         updateTableDisplay();
+    }
+    
+    // パスから親パスを取得
+    function getParentPath(path) {
+        const parts = path.split('.');
+        if (parts.length > 1) {
+            return parts.slice(0, -1).join('.');
+        }
+        return null;
     }
     
     // テーブル表示を更新
     function updateTableDisplay() {
         const table = document.querySelector('#table-container table');
         if (!table) return;
+        
+        // まず、子が全て非表示の親を検出
+        updateParentVisibility();
+        
+        // colspanを再計算
+        updateColspans();
         
         // ヘッダの更新
         const headerCells = table.querySelectorAll('th');
@@ -700,25 +730,102 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // データ行の更新
+        // データ行の更新（flatKeysの順序を使用）
         const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
             const cells = row.querySelectorAll('td');
-            let cellIndex = 0;
+            // flatKeysとセルの対応を正しく行う
             flatKeys.forEach((key, index) => {
-                if (cellIndex < cells.length) {
+                if (index < cells.length) {
                     if (hiddenColumns.has(key)) {
-                        cells[cellIndex].classList.add('column-hidden');
+                        cells[index].classList.add('column-hidden');
                     } else {
-                        cells[cellIndex].classList.remove('column-hidden');
+                        cells[index].classList.remove('column-hidden');
                     }
-                    cellIndex++;
                 }
             });
         });
         
         // ＋ボタンの状態を更新
         updateShowColumnsButton();
+    }
+    
+    // 子が全て非表示の親を自動的に非表示にする
+    function updateParentVisibility() {
+        // 自動的に非表示になった親を記録
+        const autoHiddenParents = new Set();
+        
+        // 親子関係を逆引き
+        const parentToChildren = {};
+        Object.entries(columnHierarchy).forEach(([parent, children]) => {
+            parentToChildren[parent] = children;
+        });
+        
+        // 各親について、全ての子が非表示かチェック
+        Object.entries(parentToChildren).forEach(([parent, children]) => {
+            if (children.length > 0) {
+                const allChildrenHidden = children.every(child => hiddenColumns.has(child));
+                if (allChildrenHidden && !hiddenColumns.has(parent)) {
+                    // 子が全て非表示だが親は表示されている場合、親も非表示に
+                    hiddenColumns.add(parent);
+                    autoHiddenParents.add(parent);
+                    // 親による非表示として記録
+                    if (!hiddenByParent.has(parent)) {
+                        hiddenByParent.set(parent, 'auto-hidden');
+                    }
+                }
+            }
+        });
+    }
+    
+    // colspanを動的に更新
+    function updateColspans() {
+        const table = document.querySelector('#table-container table');
+        if (!table) return;
+        
+        const thead = table.querySelector('thead');
+        const rows = Array.from(thead.querySelectorAll('tr'));
+        
+        // 各行のセルを処理
+        rows.forEach((row, rowIndex) => {
+            const cells = Array.from(row.querySelectorAll('th'));
+            
+            cells.forEach(cell => {
+                const path = cell.dataset.columnPath;
+                if (!path || hiddenColumns.has(path)) return;
+                
+                // このセルの子要素で表示されているものの数を計算
+                const children = columnHierarchy[path] || [];
+                if (children.length > 0) {
+                    const visibleChildCount = countVisibleDescendants(path);
+                    if (visibleChildCount > 0) {
+                        cell.setAttribute('colspan', visibleChildCount);
+                    } else {
+                        cell.setAttribute('colspan', 1);
+                    }
+                }
+            });
+        });
+    }
+    
+    // 指定されたパスの表示されている子孫の数を再帰的にカウント
+    function countVisibleDescendants(path) {
+        const children = columnHierarchy[path] || [];
+        
+        if (children.length === 0) {
+            // リーフノードの場合
+            return hiddenColumns.has(path) ? 0 : 1;
+        }
+        
+        let count = 0;
+        children.forEach(child => {
+            if (!hiddenColumns.has(child)) {
+                const childDescendants = countVisibleDescendants(child);
+                count += childDescendants > 0 ? childDescendants : 1;
+            }
+        });
+        
+        return count;
     }
     
     // ＋ボタンの状態を更新
