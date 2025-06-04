@@ -368,16 +368,36 @@ document.addEventListener('DOMContentLoaded', function() {
         // フラットなキーリストを作成（データ表示用）
         flatKeys = []; // グローバル変数をリセット
         function collectFlatKeys(rows) {
-            // すべての行をチェックして、リーフノードを収集
+            // 最終的なキーの順序を決定するため、視覚的な列の順序を構築
+            const columnOrder = [];
+            const maxRow = rows.length;
+            
+            // 各列の開始位置を記録
+            const columnStarts = new Map();
+            let currentColumn = 0;
+            
             rows.forEach((row, rowIndex) => {
+                let colPos = 0;
                 row.forEach(cell => {
+                    // この列の開始位置を記録
+                    if (!columnStarts.has(cell.fullPath)) {
+                        columnStarts.set(cell.fullPath, colPos);
+                    }
+                    
                     // リーフノードまたは値用ノードで、かつこのセルが最終行まで延びている場合
                     if ((cell.isLeaf || cell.key === '') && 
-                        (rowIndex + cell.rowspan === rows.length)) {
-                        flatKeys.push(cell.fullPath);
+                        (rowIndex + cell.rowspan === maxRow)) {
+                        columnOrder.push({ path: cell.fullPath, position: colPos });
                     }
+                    
+                    // 次の列位置を計算
+                    colPos += cell.colspan || 1;
                 });
             });
+            
+            // 位置順にソートしてパスを抽出
+            columnOrder.sort((a, b) => a.position - b.position);
+            columnOrder.forEach(col => flatKeys.push(col.path));
         }
         if (headerRows.length > 0) {
             collectFlatKeys(headerRows);
