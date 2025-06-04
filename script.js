@@ -133,11 +133,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // 直接値を持つ場合、値用の列を追加
         if (node.hasDirectValue) {
             totalColspan = 1;
-            // 値用の仮想ノードを作成
+            // 値用の仮想ノードを作成（最初に追加するため、一時的に保存）
             if (!node.children['']) {
-                node.children[''] = new KeyNode('');
-                node.children[''].depth = node.depth + 1;
-                node.children[''].rowspan = maxDepth - node.depth;
+                const valueNode = new KeyNode('');
+                valueNode.depth = node.depth + 1;
+                valueNode.rowspan = maxDepth - node.depth;
+                
+                // 既存の子ノードを一時保存
+                const existingChildren = { ...node.children };
+                // childrenをリセットして値用ノードを最初に追加
+                node.children = { '': valueNode };
+                // 既存の子ノードを再追加
+                Object.assign(node.children, existingChildren);
             }
         }
         
@@ -170,7 +177,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!node.isLeaf || node.hasDirectValue) {
                 const currentPath = depth === 0 ? '' : (parentPath ? `${parentPath}.${node.key}` : node.key);
-                Object.values(node.children).forEach(child => {
+                
+                // 値用ノード（''）を最初に処理
+                const childrenArray = Object.values(node.children);
+                const sortedChildren = childrenArray.sort((a, b) => {
+                    if (a.key === '') return -1;
+                    if (b.key === '') return 1;
+                    return 0; // それ以外は順序を維持
+                });
+                
+                sortedChildren.forEach(child => {
                     traverse(child, depth + 1, currentPath);
                 });
             }
