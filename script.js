@@ -463,8 +463,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // スクロールが必要な場合のみ表示
             if (tableWidth > containerWidth) {
+                // スクロールバーの幅を考慮した幅を設定
+                // コンテナの幅とスクロール可能な幅の差分を計算
+                const scrollableWidth = tableWidth - containerWidth;
+                
+                // 下部スクロールバーの表示エリアの幅を取得
+                const wrapperWidth = sw.clientWidth;
+                
                 // スクロールコンテンツの幅を設定
-                sc.style.width = tableWidth + 'px';
+                // スクロールバーが同じ範囲をカバーするように調整
+                sc.style.width = (wrapperWidth + scrollableWidth) + 'px';
                 
                 // 横スクロールバーを表示
                 sw.style.display = 'block';
@@ -475,7 +483,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 tc.addEventListener('scroll', () => {
                     if (!syncing) {
                         syncing = true;
-                        sw.scrollLeft = tc.scrollLeft;
+                        // 同じ割合でスクロール
+                        const scrollRatio = tc.scrollLeft / (tableWidth - containerWidth);
+                        sw.scrollLeft = scrollRatio * (sc.offsetWidth - wrapperWidth);
                         syncing = false;
                     }
                 });
@@ -483,7 +493,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 sw.addEventListener('scroll', () => {
                     if (!syncing) {
                         syncing = true;
-                        tc.scrollLeft = sw.scrollLeft;
+                        // 同じ割合でスクロール
+                        const scrollRatio = sw.scrollLeft / (sc.offsetWidth - wrapperWidth);
+                        tc.scrollLeft = scrollRatio * (tableWidth - containerWidth);
                         syncing = false;
                     }
                 });

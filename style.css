@@ -250,6 +250,16 @@ button {
     position: relative;
 }
 
+/* テーブルタブが選択されている場合、内側のスクロールバーを非表示 */
+.table-tab-active #table-container {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.table-tab-active #table-container::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+}
+
 /* 横スクロール専用エリア */
 .horizontal-scroll-wrapper {
     display: none;
