@@ -10,6 +10,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // パースされたJSONデータを保持
     let parsedData = [];
+    
+    // 非表示列の管理
+    const hiddenColumns = new Set();
+    const hiddenByParent = new Map(); // 親によって非表示になった列
+    let columnHierarchy = {}; // 列の階層関係
+    let flatKeys = []; // フラットなキーリスト（データ表示用）
 
     // タブ切り替え機能
     function switchTab(tabName) {
@@ -360,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const headerRows = generateHeaderRows(keyTree, maxDepth);
         
         // フラットなキーリストを作成（データ表示用）
-        const flatKeys = [];
+        flatKeys = []; // グローバル変数をリセット
         function collectFlatKeys(rows) {
             // すべての行をチェックして、リーフノードを収集
             rows.forEach((row, rowIndex) => {
@@ -388,7 +394,22 @@ document.addEventListener('DOMContentLoaded', function() {
             
             rowCells.forEach(cell => {
                 const th = document.createElement('th');
-                th.textContent = cell.key;
+                th.dataset.columnPath = cell.fullPath;
+                
+                // セルの内容を作成
+                const cellContent = document.createElement('span');
+                cellContent.textContent = cell.key;
+                th.appendChild(cellContent);
+                
+                // ×アイコンを追加（空文字列の列以外）
+                if (cell.key !== '') {
+                    const hideBtn = document.createElement('span');
+                    hideBtn.className = 'column-hide-btn';
+                    hideBtn.textContent = '×';
+                    hideBtn.title = '列を非表示';
+                    hideBtn.dataset.columnPath = cell.fullPath;
+                    th.appendChild(hideBtn);
+                }
                 
                 if (cell.colspan > 1) {
                     th.setAttribute('colspan', cell.colspan);
@@ -446,6 +467,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentTableContainer = document.getElementById('table-container');
         currentTableContainer.innerHTML = '';
         currentTableContainer.appendChild(table);
+        
+        // 列の階層関係を構築
+        buildColumnHierarchy(headerRows);
+        
+        // 列の非表示/再表示イベントを設定
+        setupColumnVisibilityEvents();
         
         // 横スクロールの同期設定
         setupHorizontalScrollSync();
@@ -553,8 +580,180 @@ document.addEventListener('DOMContentLoaded', function() {
             scrollWrapper.style.display = 'none';
         }
         switchTab('input');
+        
+        // 非表示列をリセット
+        hiddenColumns.clear();
+        hiddenByParent.clear();
+        columnHierarchy = {};
     }
 
+    // 列の階層関係を構築
+    function buildColumnHierarchy(headerRows) {
+        columnHierarchy = {};
+        
+        // フラットなキーリストから階層を構築
+        headerRows.forEach(row => {
+            row.forEach(cell => {
+                const path = cell.fullPath;
+                if (!path) return;
+                
+                // 親のパスを取得
+                const parts = path.split('.');
+                if (parts.length > 1) {
+                    const parentPath = parts.slice(0, -1).join('.');
+                    if (!columnHierarchy[parentPath]) {
+                        columnHierarchy[parentPath] = [];
+                    }
+                    if (!columnHierarchy[parentPath].includes(path)) {
+                        columnHierarchy[parentPath].push(path);
+                    }
+                }
+                
+                // 自分自身のエントリも作成
+                if (!columnHierarchy[path]) {
+                    columnHierarchy[path] = [];
+                }
+            });
+        });
+    }
+    
+    // 列を非表示にする
+    function hideColumn(fullPath) {
+        // 自身を非表示リストに追加
+        hiddenColumns.add(fullPath);
+        
+        // 子列を検索
+        const children = columnHierarchy[fullPath] || [];
+        
+        // 子列を非表示リストに追加（親による非表示として記録）
+        children.forEach(child => {
+            if (!hiddenColumns.has(child)) {
+                hiddenByParent.set(child, fullPath);
+            }
+            hiddenColumns.add(child);
+            // 再帰的に子の子も処理
+            hideColumn(child);
+        });
+        
+        // 表示を更新
+        updateTableDisplay();
+    }
+    
+    // 列を再表示する
+    function showColumn(fullPath) {
+        // 自身を表示
+        hiddenColumns.delete(fullPath);
+        
+        // 親によって非表示になっていた子列を確認
+        const childrenToShow = [];
+        hiddenByParent.forEach((parent, child) => {
+            if (parent === fullPath) {
+                childrenToShow.push(child);
+            }
+        });
+        
+        // 該当する子列を表示
+        childrenToShow.forEach(child => {
+            hiddenColumns.delete(child);
+            hiddenByParent.delete(child);
+            // 再帰的に子の子も処理
+            showColumn(child);
+        });
+        
+        // 表示を更新
+        updateTableDisplay();
+    }
+    
+    // テーブル表示を更新
+    function updateTableDisplay() {
+        const table = document.querySelector('#table-container table');
+        if (!table) return;
+        
+        // ヘッダの更新
+        const headerCells = table.querySelectorAll('th');
+        headerCells.forEach(th => {
+            const path = th.dataset.columnPath;
+            if (path && hiddenColumns.has(path)) {
+                th.classList.add('column-hidden');
+            } else {
+                th.classList.remove('column-hidden');
+            }
+        });
+        
+        // データ行の更新
+        const rows = table.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            let cellIndex = 0;
+            flatKeys.forEach((key, index) => {
+                if (cellIndex < cells.length) {
+                    if (hiddenColumns.has(key)) {
+                        cells[cellIndex].classList.add('column-hidden');
+                    } else {
+                        cells[cellIndex].classList.remove('column-hidden');
+                    }
+                    cellIndex++;
+                }
+            });
+        });
+        
+        // ＋ボタンの状態を更新
+        updateShowColumnsButton();
+    }
+    
+    // ＋ボタンの状態を更新
+    function updateShowColumnsButton() {
+        const btn = document.getElementById('show-columns-btn');
+        if (hiddenColumns.size > 0) {
+            btn.classList.remove('disabled');
+        } else {
+            btn.classList.add('disabled');
+        }
+    }
+    
+    // 列の非表示/再表示イベントを設定
+    function setupColumnVisibilityEvents() {
+        // ×アイコンのクリックイベント（イベントデリゲーション）
+        const table = document.querySelector('#table-container table');
+        if (table) {
+            table.addEventListener('click', (e) => {
+                if (e.target.classList.contains('column-hide-btn')) {
+                    e.stopPropagation();
+                    const path = e.target.dataset.columnPath;
+                    if (path) {
+                        hideColumn(path);
+                    }
+                }
+            });
+        }
+    }
+    
+    // 非表示列のリストを更新
+    function updateHiddenColumnsList() {
+        const list = document.getElementById('hidden-columns-list');
+        list.innerHTML = '';
+        
+        if (hiddenColumns.size === 0) {
+            list.innerHTML = '<div class="empty-message">非表示の列はありません</div>';
+            return;
+        }
+        
+        // ユーザーが直接非表示にした列のみ表示
+        const userHiddenColumns = Array.from(hiddenColumns).filter(path => !hiddenByParent.has(path));
+        
+        userHiddenColumns.forEach(path => {
+            const item = document.createElement('div');
+            item.className = 'hidden-column-item';
+            item.innerHTML = `<span class="column-path">${escapeHtml(path)}</span>`;
+            item.addEventListener('click', () => {
+                showColumn(path);
+                const menu = document.getElementById('hidden-columns-menu');
+                menu.classList.remove('active');
+            });
+            list.appendChild(item);
+        });
+    }
+    
     formatBtn.addEventListener('click', formatJsonLines);
     clearBtn.addEventListener('click', clearAll);
 
@@ -870,5 +1069,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (document.body.classList.contains('table-tab-active')) {
             setupHorizontalScrollSync();
         }
+    });
+    
+    // ＋ボタンのイベント設定
+    const showBtn = document.getElementById('show-columns-btn');
+    const menu = document.getElementById('hidden-columns-menu');
+    
+    showBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (hiddenColumns.size === 0) return;
+        
+        // メニューの表示/非表示を切り替え
+        menu.classList.toggle('active');
+        
+        // 非表示列のリストを更新
+        updateHiddenColumnsList();
+    });
+    
+    // メニュー外をクリックしたら閉じる
+    document.addEventListener('click', () => {
+        menu.classList.remove('active');
+    });
+    
+    menu.addEventListener('click', (e) => {
+        e.stopPropagation();
     });
 });
