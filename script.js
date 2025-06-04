@@ -429,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // セルの内容を作成
                 const cellContent = document.createElement('span');
-                cellContent.textContent = cell.key || '(値)';  // 空文字列の場合は(値)と表示
+                cellContent.textContent = cell.key;  // 空文字列の場合は空のまま
                 th.appendChild(cellContent);
                 
                 // ×アイコンを追加（すべてのリーフノードに）
@@ -855,9 +855,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const table = document.querySelector('#table-container table');
         if (table) {
             table.addEventListener('click', (e) => {
-                if (e.target.classList.contains('column-hide-btn')) {
+                // クリックされた要素またはその親要素がcolumn-hide-btnクラスを持っているか確認
+                const hideBtn = e.target.closest('.column-hide-btn');
+                if (hideBtn) {
                     e.stopPropagation();
-                    const path = e.target.dataset.columnPath;
+                    const path = hideBtn.dataset.columnPath;
                     if (path) {
                         hideColumn(path);
                     }
