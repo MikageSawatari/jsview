@@ -308,13 +308,14 @@ body.table-tab-active {
 #table-container th {
     background-color: #f8f8f8;
     border: 1px solid #ddd;
-    padding: 10px;
+    padding: 10px 30px 10px 10px;  /* 右側に×ボタン用の余白を追加 */
     text-align: left;
     font-weight: bold;
     position: sticky;
     top: 0;
     z-index: 10;
     min-width: 150px;
+    min-height: 40px;  /* ×ボタンが収まる高さを確保 */
 }
 
 /* 複数行ヘッダの固定 - 画面に対してスティッキー */
@@ -644,21 +645,36 @@ body.table-tab-active {
 /* ×アイコン */
 .column-hide-btn {
     position: absolute;
-    right: 2px;
-    top: 2px;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
     cursor: pointer;
-    opacity: 0.3;
-    font-size: 12px;
-    line-height: 1;
-    padding: 2px 4px;
-    border-radius: 2px;
-    background: rgba(255, 255, 255, 0.8);
+    opacity: 0.5;
     transition: opacity 0.2s;
 }
 
 .column-hide-btn:hover {
     opacity: 1;
-    background: rgba(255, 255, 255, 1);
+}
+
+.hide-icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.column-hide-btn:hover .hide-icon-circle {
+    background-color: #c0392b;
+    transform: scale(1.1);
 }
 
 #table-container th {

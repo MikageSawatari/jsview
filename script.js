@@ -429,14 +429,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // セルの内容を作成
                 const cellContent = document.createElement('span');
-                cellContent.textContent = cell.key;
+                cellContent.textContent = cell.key || '(値)';  // 空文字列の場合は(値)と表示
                 th.appendChild(cellContent);
                 
-                // ×アイコンを追加（空文字列の列以外）
-                if (cell.key !== '') {
+                // ×アイコンを追加（すべてのリーフノードに）
+                if (cell.isLeaf || cell.key === '') {
                     const hideBtn = document.createElement('span');
                     hideBtn.className = 'column-hide-btn';
-                    hideBtn.textContent = '×';
+                    hideBtn.innerHTML = '<span class="hide-icon-circle">×</span>';
                     hideBtn.title = '列を非表示';
                     hideBtn.dataset.columnPath = cell.fullPath;
                     th.appendChild(hideBtn);
