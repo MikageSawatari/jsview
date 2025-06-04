@@ -81,6 +81,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         if (parsedData.length > 0) {
+            // 非表示列の状態をクリア
+            hiddenColumns.clear();
+            hiddenByParent.clear();
+            columnHierarchy = {};
+            
+            // メニューを閉じる
+            const menu = document.getElementById('hidden-columns-menu');
+            if (menu) {
+                menu.classList.remove('active');
+            }
+            
             createTable();
             switchTab('table');
         }
