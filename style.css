@@ -15,10 +15,8 @@ body {
 
 /* テーブルタブが選択されている場合のbody */
 body.table-tab-active {
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
 }
 
 .container {
@@ -161,12 +159,6 @@ button {
     margin-bottom: 10px;
     border-bottom: 2px solid #e0e0e0;
     flex-shrink: 0;
-    background-color: #f5f5f5;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    padding-top: 10px;
-    margin-top: -10px;
 }
 
 .tab-button {
@@ -207,9 +199,11 @@ button {
 /* テーブルタブの場合は全画面を使用 */
 #table-tab .tab-content {
     flex: 1;
-    overflow: visible;
-    height: auto;
+    overflow: hidden;
+    height: 100%;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .tab-panel {
@@ -232,7 +226,7 @@ button {
 /* テーブルタブの場合は全体スクロール */
 #table-tab.tab-panel.active {
     overflow: visible;
-    height: auto;
+    height: calc(100vh - 120px);
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -240,17 +234,18 @@ button {
 
 .table-section {
     width: 100%;
-    height: auto;
-    overflow-x: auto;
-    overflow-y: visible;
+    height: 100%;
+    overflow: auto;
     display: flex;
     flex-direction: column;
+    position: relative;
 }
 
 #table-container {
-    flex: 1;
-    overflow-x: auto;
-    overflow-y: visible;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    position: relative;
 }
 
 #table-container table {
@@ -271,37 +266,38 @@ button {
     min-width: 150px;
 }
 
-/* 複数行ヘッダの固定 - タブの高さを考慮 */
-.table-tab-active #table-container thead {
+/* 複数行ヘッダの固定 - コンテナ内でのスクロール */
+#table-container thead {
     position: sticky;
-    top: 52px; /* タブの高さ分オフセット */
+    top: 0;
     z-index: 20;
 }
 
-.table-tab-active #table-container th {
+#table-container th {
     position: sticky;
-    top: 52px;
+    top: 0;
+    z-index: 10;
 }
 
 /* 各ヘッダ行の位置調整 */
-.table-tab-active #table-container thead tr:nth-child(1) th {
-    top: 52px;
+#table-container thead tr:nth-child(1) th {
+    top: 0;
 }
 
-.table-tab-active #table-container thead tr:nth-child(2) th {
-    top: 94px; /* 52px + 42px */
+#table-container thead tr:nth-child(2) th {
+    top: 42px;
 }
 
-.table-tab-active #table-container thead tr:nth-child(3) th {
-    top: 136px; /* 52px + 84px */
+#table-container thead tr:nth-child(3) th {
+    top: 84px;
 }
 
-.table-tab-active #table-container thead tr:nth-child(4) th {
-    top: 178px; /* 52px + 126px */
+#table-container thead tr:nth-child(4) th {
+    top: 126px;
 }
 
-.table-tab-active #table-container thead tr:nth-child(5) th {
-    top: 220px; /* 52px + 168px */
+#table-container thead tr:nth-child(5) th {
+    top: 168px;
 }
 
 #table-container td {
