@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let flatKeys = []; // フラットなキーリスト（データ表示用）
 
     // タブ切り替え機能
-    function switchTab(tabName) {
+    function switchTab(tabName, pushState = true) {
         tabButtons.forEach(btn => {
             if (btn.dataset.tab === tabName) {
                 btn.classList.add('active');
@@ -50,6 +50,13 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.remove('table-tab-active');
             document.querySelector('.container').classList.remove('table-tab-active');
             if (tableControls) tableControls.style.display = 'none';
+        }
+        
+        // History APIに状態を追加
+        if (pushState) {
+            const state = { view: 'tab', tab: tabName };
+            const url = `#${tabName}`;
+            history.pushState(state, '', url);
         }
     }
     
@@ -1186,7 +1193,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ダイアログ表示
-    function showJsonDialog(json) {
+    function showJsonDialog(json, pushState = true) {
         const dialog = document.getElementById('json-dialog');
         const jsonDisplay = document.getElementById('json-display');
         
@@ -1198,6 +1205,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // イベントデリゲーションハンドラーを初期化（一度だけ）
         initializeJsonEventHandlers();
+        
+        // History APIに状態を追加
+        if (pushState) {
+            const rowIndex = parsedData.indexOf(json);
+            if (rowIndex !== -1) {
+                const state = { view: 'json-dialog', rowIndex: rowIndex };
+                const url = `#table/row/${rowIndex}`;
+                history.pushState(state, '', url);
+            }
+        }
     }
     
     // イベントデリゲーションの初期化
@@ -1271,12 +1288,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // 文字列詳細ダイアログを表示
-    function showStringDialog(str) {
+    function showStringDialog(str, pushState = true) {
         const dialog = document.getElementById('string-dialog');
         const stringDisplay = document.getElementById('string-display');
         
         stringDisplay.textContent = str;
         dialog.classList.add('active');
+        
+        // History APIに状態を追加
+        if (pushState) {
+            // 文字列全体を保存（大きすぎる場合の対策として、一定サイズ以上は切り詰める）
+            const maxLength = 10000;
+            const storedString = str.length > maxLength ? str.substring(0, maxLength) + '...' : str;
+            const state = { view: 'string-dialog', fullString: storedString };
+            const url = '#table/string';
+            history.pushState(state, '', url);
+        }
     }
     
     // ダイアログ関連のイベントリスナー
@@ -1286,26 +1313,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // JSONダイアログのイベント
     const jsonCloseButton = jsonDialog.querySelector('.dialog-close');
     jsonCloseButton.addEventListener('click', () => {
-        jsonDialog.classList.remove('active');
+        closeJsonDialog();
     });
     
     jsonDialog.addEventListener('click', (e) => {
         if (e.target === jsonDialog) {
-            jsonDialog.classList.remove('active');
+            closeJsonDialog();
         }
     });
     
     // 文字列ダイアログのイベント
     const stringCloseButton = stringDialog.querySelector('.dialog-close');
     stringCloseButton.addEventListener('click', () => {
-        stringDialog.classList.remove('active');
+        closeStringDialog();
     });
     
     stringDialog.addEventListener('click', (e) => {
         if (e.target === stringDialog) {
-            stringDialog.classList.remove('active');
+            closeStringDialog();
         }
     });
+    
+    // ダイアログを閉じる関数
+    function closeJsonDialog() {
+        jsonDialog.classList.remove('active');
+        // テーブルタブに戻る
+        if (document.body.classList.contains('table-tab-active')) {
+            history.pushState({ view: 'tab', tab: 'table' }, '', '#table');
+        }
+    }
+    
+    function closeStringDialog() {
+        stringDialog.classList.remove('active');
+        // 前の状態に戻る
+        const currentState = history.state;
+        if (currentState && currentState.view === 'string-dialog') {
+            history.back();
+        }
+    }
     
     // コピーボタンのイベント
     const copyButton = document.getElementById('copy-string-btn');
@@ -1332,14 +1377,60 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (stringDialog.classList.contains('active')) {
-                stringDialog.classList.remove('active');
+                closeStringDialog();
             } else if (jsonDialog.classList.contains('active')) {
-                jsonDialog.classList.remove('active');
+                closeJsonDialog();
             }
         }
     });
 
+    // popstateイベントリスナー（ブラウザの戻る/進むボタン対応）
+    window.addEventListener('popstate', (e) => {
+        const state = e.state;
+        
+        // ダイアログを閉じる
+        jsonDialog.classList.remove('active');
+        stringDialog.classList.remove('active');
+        
+        if (!state) {
+            // 初期状態（入力タブ）
+            switchTab('input', false);
+            return;
+        }
+        
+        switch (state.view) {
+            case 'tab':
+                switchTab(state.tab, false);
+                break;
+                
+            case 'json-dialog':
+                if (state.rowIndex !== undefined && parsedData[state.rowIndex]) {
+                    switchTab('table', false);
+                    showJsonDialog(parsedData[state.rowIndex], false);
+                }
+                break;
+                
+            case 'string-dialog':
+                if (state.fullString) {
+                    showStringDialog(state.fullString, false);
+                }
+                break;
+        }
+    });
+    
     // 初期状態の設定
+    const initialHash = window.location.hash;
+    if (initialHash) {
+        if (initialHash === '#table') {
+            switchTab('table', false);
+        } else if (initialHash === '#input') {
+            switchTab('input', false);
+        }
+    } else {
+        // 初期状態を履歴に追加
+        history.replaceState({ view: 'tab', tab: 'input' }, '', '#input');
+    }
+    
     const initialTableContainer = document.getElementById('table-container');
     if (initialTableContainer) {
         initialTableContainer.innerHTML = '';

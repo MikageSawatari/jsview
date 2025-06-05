@@ -327,6 +327,13 @@ body.table-tab-active {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    vertical-align: top;  /* rowspanがある場合に上揃えにする */
+}
+
+/* rowspanが設定されているヘッダセルの調整 */
+#table-container th[rowspan] {
+    height: auto;  /* rowspanの場合は高さを自動に */
+    padding-top: 11px;  /* 上側のパディングを少し増やして位置調整 */
 }
 
 /* ホバー時にツールチップ風に表示 */
@@ -674,8 +681,7 @@ body.table-tab-active {
 .column-hide-btn {
     position: absolute;
     right: 4px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 10px;  /* 上部に固定配置 */
     cursor: pointer;
     opacity: 0.5;
     transition: opacity 0.2s;
@@ -707,7 +713,7 @@ body.table-tab-active {
 
 #table-container th {
     position: relative;
-    vertical-align: middle;  /* セル内容の垂直中央揃え */
+    vertical-align: top;  /* rowspanがある場合に上揃えにする */
 }
 
 /* 空文字列のヘッダセルでも高さを維持 */
