@@ -15,14 +15,22 @@
                 <button class="tab-button active" data-tab="input">入力</button>
                 <button class="tab-button" data-tab="table">テーブル</button>
             </div>
-            <!-- 列の再表示ボタン（タブの外側に配置） -->
+            <!-- テーブルコントロール（タブの外側に配置） -->
             <div class="table-controls">
-                <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
-                    <span class="plus-icon">+</span>
-                </button>
-                <div id="hidden-columns-menu" class="hidden-columns-menu">
-                    <div class="menu-header">非表示の列</div>
-                    <div id="hidden-columns-list" class="hidden-columns-list"></div>
+                <!-- 検索ボックス -->
+                <div class="search-box-container">
+                    <input type="text" id="search-box" class="search-box" placeholder="検索... (スペース:AND, ;:OR)">
+                    <button id="clear-search-btn" class="clear-search-btn" title="検索をクリア">&times;</button>
+                </div>
+                <!-- 列の再表示ボタンコンテナ -->
+                <div class="show-columns-container">
+                    <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
+                        <span class="plus-icon">+</span>
+                    </button>
+                    <div id="hidden-columns-menu" class="hidden-columns-menu">
+                        <div class="menu-header">非表示の列</div>
+                        <div id="hidden-columns-list" class="hidden-columns-list"></div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', function() {
         column: null,  // ソート中の列
         order: null    // 'asc', 'desc', null
     };
+    
+    // 検索状態の管理
+    let searchState = {
+        query: '',     // 検索クエリ
+        mode: 'AND'    // 'AND' or 'OR'
+    };
 
     // タブ切り替え機能
     function switchTab(tabName, pushState = true) {
@@ -111,6 +117,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // ソート状態をリセット
             sortState.column = null;
             sortState.order = null;
+            
+            // 検索状態をリセット
+            searchState.query = '';
+            const searchBox = document.getElementById('search-box');
+            if (searchBox) searchBox.value = '';
             
             // メニューを閉じる
             const menu = document.getElementById('hidden-columns-menu');
@@ -529,8 +540,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // ソートされたデータを取得
         const sortedData = getSortedData();
         
+        // 検索結果の件数を更新
+        updateSearchResultCount(sortedData.length, parsedData.length);
+        
         // データ行の作成
         const tbody = document.createElement('tbody');
+        
+        // 検索結果が0件の場合
+        if (sortedData.length === 0 && searchState.query) {
+            const emptyRow = document.createElement('tr');
+            const emptyCell = document.createElement('td');
+            emptyCell.setAttribute('colspan', flatKeys.length || 1);
+            emptyCell.className = 'no-results-message';
+            emptyCell.textContent = `「${searchState.query}」に一致するデータが見つかりませんでした`;
+            emptyRow.appendChild(emptyCell);
+            tbody.appendChild(emptyRow);
+        }
         
         sortedData.forEach((item, index) => {
             const row = document.createElement('tr');
@@ -705,6 +730,11 @@ document.addEventListener('DOMContentLoaded', function() {
         hiddenByParent.clear();
         autoHiddenColumns.clear();
         columnHierarchy = {};
+        
+        // 検索状態をリセット
+        searchState.query = '';
+        const searchBox = document.getElementById('search-box');
+        if (searchBox) searchBox.value = '';
     }
 
     // 値の存在率を計算する関数
@@ -928,15 +958,84 @@ document.addEventListener('DOMContentLoaded', function() {
     // データをソート
     function getSortedData() {
         if (!sortState.column || !sortState.order) {
-            return parsedData;  // ソートなし
+            return getFilteredData();  // ソートなし、フィルタのみ
         }
         
-        // データをコピーしてソート
-        return [...parsedData].sort((rowA, rowB) => {
+        // フィルタされたデータをコピーしてソート
+        return [...getFilteredData()].sort((rowA, rowB) => {
             const valueA = getValueByPath(rowA, sortState.column);
             const valueB = getValueByPath(rowB, sortState.column);
             return compareValues(valueA, valueB, sortState.order);
         });
+    }
+    
+    // 検索条件に基づいてデータをフィルタ
+    function getFilteredData() {
+        if (!searchState.query) {
+            return parsedData;  // 検索なし
+        }
+        
+        // 検索クエリをパース
+        const queries = parseSearchQuery(searchState.query);
+        
+        return parsedData.filter(row => {
+            if (queries.mode === 'AND') {
+                // AND検索: すべての条件を満たす
+                return queries.terms.every(term => matchesSearchTerm(row, term));
+            } else {
+                // OR検索: いずれかの条件を満たす
+                return queries.terms.some(term => matchesSearchTerm(row, term));
+            }
+        });
+    }
+    
+    // 検索クエリをパース
+    function parseSearchQuery(query) {
+        // セミコロンが含まれている場合はOR検索
+        if (query.includes(';')) {
+            return {
+                mode: 'OR',
+                terms: query.split(';').map(t => t.trim()).filter(t => t)
+            };
+        }
+        
+        // スペースで分割してAND検索
+        return {
+            mode: 'AND',
+            terms: query.split(/\s+/).filter(t => t)
+        };
+    }
+    
+    // 単一の検索タームにマッチするかチェック
+    function matchesSearchTerm(row, term) {
+        const lowerTerm = term.toLowerCase();
+        
+        // すべての値を再帰的に検索
+        function searchInValue(value) {
+            if (value === null || value === undefined) {
+                return false;
+            }
+            
+            if (typeof value === 'string') {
+                return value.toLowerCase().includes(lowerTerm);
+            }
+            
+            if (typeof value === 'number' || typeof value === 'boolean') {
+                return String(value).toLowerCase().includes(lowerTerm);
+            }
+            
+            if (Array.isArray(value)) {
+                return value.some(item => searchInValue(item));
+            }
+            
+            if (typeof value === 'object') {
+                return Object.values(value).some(v => searchInValue(v));
+            }
+            
+            return false;
+        }
+        
+        return searchInValue(row);
     }
     
     // ソートアイコンを更新
@@ -1782,4 +1881,66 @@ document.addEventListener('DOMContentLoaded', function() {
     menu.addEventListener('click', (e) => {
         e.stopPropagation();
     });
+    
+    // 検索結果件数を更新
+    function updateSearchResultCount(filteredCount, totalCount) {
+        const searchBox = document.getElementById('search-box');
+        if (!searchBox) return;
+        
+        if (searchState.query && filteredCount < totalCount) {
+            // 検索中の場合、件数を表示
+            const resultText = `(${filteredCount}/${totalCount}件)`;
+            // placeholderを一時的に変更
+            searchBox.dataset.originalPlaceholder = searchBox.dataset.originalPlaceholder || searchBox.placeholder;
+            searchBox.placeholder = searchBox.value ? searchBox.placeholder : `検索... ${resultText}`;
+            
+            // タイトルにも表示
+            searchBox.title = `検索結果: ${filteredCount}件 / 全${totalCount}件`;
+        } else {
+            // 検索していない場合、元のplaceholderに戻す
+            if (searchBox.dataset.originalPlaceholder) {
+                searchBox.placeholder = searchBox.dataset.originalPlaceholder;
+            }
+            searchBox.title = '';
+        }
+    }
+    
+    // 検索ボックスのイベント設定
+    const searchBox = document.getElementById('search-box');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    
+    if (searchBox) {
+        // 入力時のイベント（デバウンス処理付き）
+        let searchTimer = null;
+        searchBox.addEventListener('input', (e) => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => {
+                searchState.query = e.target.value.trim();
+                if (parsedData.length > 0) {
+                    createTable();
+                }
+            }, 300);  // 300msの遅延
+        });
+        
+        // Enterキーで即座に検索
+        searchBox.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimer);
+                searchState.query = e.target.value.trim();
+                if (parsedData.length > 0) {
+                    createTable();
+                }
+            }
+        });
+    }
+    
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', () => {
+            searchBox.value = '';
+            searchState.query = '';
+            if (parsedData.length > 0) {
+                createTable();
+            }
+        });
+    }
 });
