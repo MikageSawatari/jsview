@@ -506,27 +506,27 @@ body.table-tab-active {
 }
 
 .indent-guide-1 {
-    background-color: #ff6b6b;
+    background-color: #ff9999;
 }
 
 .indent-guide-2 {
-    background-color: #4ecdc4;
+    background-color: #ffcc99;
 }
 
 .indent-guide-3 {
-    background-color: #45b7d1;
+    background-color: #99cc99;
 }
 
 .indent-guide-4 {
-    background-color: #96ceb4;
+    background-color: #99ccff;
 }
 
 .indent-guide-5 {
-    background-color: #ffeaa7;
+    background-color: #cc99ff;
 }
 
 .indent-guide-6 {
-    background-color: #dfe6e9;
+    background-color: #ff99cc;
 }
 
 /* 文字列詳細ダイアログ */
