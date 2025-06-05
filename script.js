@@ -34,6 +34,10 @@ document.addEventListener('DOMContentLoaded', function() {
         query: '',     // 検索クエリ
         mode: 'AND'    // 'AND' or 'OR'
     };
+    
+    // フィルタ状態の管理
+    const columnFilters = new Map();
+    let activeFilterDropdown = null;  // 現在開いているフィルタドロップダウン
 
     // タブ切り替え機能
     function switchTab(tabName, pushState = true) {
@@ -127,6 +131,10 @@ document.addEventListener('DOMContentLoaded', function() {
             searchState.query = '';
             const searchBox = document.getElementById('search-box');
             if (searchBox) searchBox.value = '';
+            
+            // フィルタ状態をリセット
+            columnFilters.clear();
+            closeActiveFilterDropdown();
             
             // メニューを閉じる
             const menu = document.getElementById('hidden-columns-menu');
@@ -630,9 +638,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // スクロールボタンの設定
         setupScrollButtons();
         
-        // ソートアイコンを更新（DOMが完全に構築された後に実行）
+        // ソートアイコンとフィルタアイコンを更新（DOMが完全に構築された後に実行）
         setTimeout(() => {
             updateSortIcons();
+            updateFilterIcons();
         }, 0);
     }
     
@@ -749,6 +758,10 @@ document.addEventListener('DOMContentLoaded', function() {
         searchState.query = '';
         const searchBox = document.getElementById('search-box');
         if (searchBox) searchBox.value = '';
+        
+        // フィルタ状態をリセット
+        columnFilters.clear();
+        closeActiveFilterDropdown();
         
         // sessionStorageをクリア
         sessionStorage.removeItem(STORAGE_KEY_INPUT);
@@ -882,24 +895,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 // ソート機能を追加
                 th.style.cursor = 'pointer';
                 th.addEventListener('click', (e) => {
-                    // ×ボタンのクリックは除外
-                    if (e.target.closest('.column-hide-btn')) {
+                    // ×ボタンとフィルタアイコンのクリックは除外
+                    if (e.target.closest('.column-hide-btn') || e.target.closest('.filter-icon')) {
                         return;
                     }
                     e.stopPropagation();
                     handleHeaderClick(key);
                 });
                 
-                // ソートアイコンを×ボタンの前に追加
+                // フィルタアイコンを追加
+                const filterIcon = document.createElement('span');
+                filterIcon.className = 'filter-icon';
+                filterIcon.dataset.columnPath = key;
+                filterIcon.innerHTML = '▼';  // フィルタアイコン
+                filterIcon.title = 'フィルタ';
+                
+                // フィルタアイコンのクリックイベント
+                filterIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleFilterClick(key, filterIcon);
+                });
+                
+                // ソートアイコンを追加
                 const sortIcon = document.createElement('span');
                 sortIcon.className = 'sort-icon';
                 sortIcon.dataset.columnPath = key;
                 
-                // ×ボタンの前に挿入
+                // ×ボタンの前に挿入（フィルタアイコン → ソートアイコン → ×ボタンの順）
                 const hideBtn = th.querySelector('.column-hide-btn');
                 if (hideBtn) {
+                    th.insertBefore(filterIcon, hideBtn);
                     th.insertBefore(sortIcon, hideBtn);
                 } else {
+                    th.appendChild(filterIcon);
                     th.appendChild(sortIcon);
                 }
             }
@@ -988,24 +1016,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // 検索条件に基づいてデータをフィルタ
+    // 検索条件と列フィルタに基づいてデータをフィルタ
     function getFilteredData() {
-        if (!searchState.query) {
-            return parsedData;  // 検索なし
+        let data = parsedData;
+        
+        // 検索フィルタを適用
+        if (searchState.query) {
+            // 検索クエリをパース
+            const queries = parseSearchQuery(searchState.query);
+            
+            data = data.filter(row => {
+                if (queries.mode === 'AND') {
+                    // AND検索: すべての条件を満たす
+                    return queries.terms.every(term => matchesSearchTerm(row, term));
+                } else {
+                    // OR検索: いずれかの条件を満たす
+                    return queries.terms.some(term => matchesSearchTerm(row, term));
+                }
+            });
         }
         
-        // 検索クエリをパース
-        const queries = parseSearchQuery(searchState.query);
-        
-        return parsedData.filter(row => {
-            if (queries.mode === 'AND') {
-                // AND検索: すべての条件を満たす
-                return queries.terms.every(term => matchesSearchTerm(row, term));
-            } else {
-                // OR検索: いずれかの条件を満たす
-                return queries.terms.some(term => matchesSearchTerm(row, term));
+        // 列フィルタを適用
+        columnFilters.forEach((filter, columnPath) => {
+            if (filter.active) {
+                data = data.filter(row => {
+                    const value = getValueByPath(row, columnPath);
+                    
+                    if (filter.type === 'checkbox') {
+                        // チェックボックスフィルタ: 選択された値のいずれかと一致
+                        return filter.selectedValues.has(value);
+                    }
+                    // TODO: 範囲フィルタとテキストフィルタの対応
+                    
+                    return true;
+                });
             }
         });
+        
+        return data;
     }
     
     // 検索クエリをパース
@@ -1055,6 +1103,346 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         return searchInValue(row);
+    }
+    
+    // 列の値を分析する関数
+    function analyzeColumnValues(columnPath) {
+        const values = new Map(); // 値 => 出現回数
+        const numericValues = [];
+        let hasNumeric = true;
+        let hasNonNumeric = false;
+        
+        // 元のデータ（parsedData）から値を収集（フィルタ前の全データ）
+        parsedData.forEach(row => {
+            const value = getValueByPath(row, columnPath);
+            if (value !== null && value !== undefined && value !== '') {
+                values.set(value, (values.get(value) || 0) + 1);
+                
+                if (typeof value === 'number') {
+                    numericValues.push(value);
+                } else {
+                    hasNonNumeric = true;
+                }
+            }
+        });
+        
+        // すべて数値の場合のみ数値フィルタとして扱う
+        const isNumeric = numericValues.length > 0 && !hasNonNumeric;
+        
+        return {
+            uniqueCount: values.size,
+            values: values,
+            isNumeric: isNumeric,
+            numericValues: numericValues
+        };
+    }
+    
+    // フィルタタイプを決定する関数
+    function determineFilterType(analysis) {
+        if (analysis.uniqueCount === 0) {
+            return 'empty';
+        } else if (analysis.uniqueCount <= 20) {
+            return 'checkbox';
+        } else if (analysis.isNumeric) {
+            return 'range';
+        } else {
+            return 'text';
+        }
+    }
+    
+    // フィルタアイコンのクリックハンドラー
+    function handleFilterClick(columnPath, filterIcon) {
+        // 既存のドロップダウンを閉じる
+        closeActiveFilterDropdown();
+        
+        // 列の値を分析
+        const analysis = analyzeColumnValues(columnPath);
+        const filterType = determineFilterType(analysis);
+        
+        if (filterType === 'empty') {
+            alert('この列にはフィルタ可能な値がありません');
+            return;
+        }
+        
+        // フィルタドロップダウンを作成
+        const dropdown = createFilterDropdown(columnPath, filterType, analysis);
+        
+        // ドロップダウンの位置を計算
+        const iconRect = filterIcon.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const dropdownHeight = 400; // 最大高さ
+        
+        // ドロップダウンが画面下部に収まるか確認
+        let top = iconRect.bottom + 5;
+        if (top + dropdownHeight > viewportHeight - 20) {
+            // 収まらない場合は上に表示
+            top = iconRect.top - dropdownHeight - 5;
+            if (top < 20) {
+                // 上にも収まらない場合は画面中央に
+                top = Math.max(20, (viewportHeight - dropdownHeight) / 2);
+            }
+        }
+        
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = Math.max(20, iconRect.left - 200) + 'px'; // アイコンの左側に配置
+        
+        // ドロップダウンをbodyに追加
+        document.body.appendChild(dropdown);
+        
+        // ドロップダウンを表示
+        setTimeout(() => {
+            dropdown.classList.add('active');
+            activeFilterDropdown = dropdown;
+            
+            // 外側クリックのイベントリスナーを登録（次のイベントループで）
+            setTimeout(() => {
+                document.addEventListener('click', handleOutsideClick, true);
+            }, 0);
+        }, 10);
+    }
+    
+    // アクティブなフィルタドロップダウンを閉じる
+    function closeActiveFilterDropdown() {
+        if (activeFilterDropdown) {
+            activeFilterDropdown.classList.remove('active');
+            document.removeEventListener('click', handleOutsideClick, true);
+            setTimeout(() => {
+                if (activeFilterDropdown && activeFilterDropdown.parentNode) {
+                    activeFilterDropdown.parentNode.removeChild(activeFilterDropdown);
+                }
+                activeFilterDropdown = null;
+            }, 200);
+        }
+    }
+    
+    // フィルタドロップダウンを作成
+    function createFilterDropdown(columnPath, filterType, analysis) {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'filter-dropdown';
+        dropdown.dataset.columnPath = columnPath;
+        
+        // チェックボックスフィルタの場合
+        if (filterType === 'checkbox') {
+            const existingFilter = columnFilters.get(columnPath);
+            const selectedValues = existingFilter ? existingFilter.selectedValues : new Set();
+            
+            // 現在のフィルタ状態での値の出現回数を計算
+            const filteredCounts = new Map();
+            const currentData = getFilteredData();
+            currentData.forEach(row => {
+                const value = getValueByPath(row, columnPath);
+                if (value !== null && value !== undefined && value !== '') {
+                    filteredCounts.set(value, (filteredCounts.get(value) || 0) + 1);
+                }
+            });
+            
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'filter-header';
+            
+            const selectAllBtn = document.createElement('button');
+            selectAllBtn.textContent = 'すべて選択';
+            selectAllBtn.onclick = (e) => {
+                e.stopPropagation();
+                selectAllFilterItems(dropdown, true);
+            };
+            
+            const clearAllBtn = document.createElement('button');
+            clearAllBtn.textContent = 'すべて解除';
+            clearAllBtn.onclick = (e) => {
+                e.stopPropagation();
+                selectAllFilterItems(dropdown, false);
+            };
+            
+            header.appendChild(selectAllBtn);
+            header.appendChild(clearAllBtn);
+            dropdown.appendChild(header);
+            
+            // 検索ボックス
+            const searchDiv = document.createElement('div');
+            searchDiv.className = 'filter-search';
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = 'フィルタ内を検索... (スペース:AND, ;:OR)';
+            searchInput.oninput = (e) => filterFilterItems(dropdown, e.target.value);
+            searchDiv.appendChild(searchInput);
+            dropdown.appendChild(searchDiv);
+            
+            // 値のリスト
+            const listDiv = document.createElement('div');
+            listDiv.className = 'filter-list';
+            
+            // 値をソート（数値は数値順、文字列はアルファベット順）
+            const sortedValues = Array.from(analysis.values.entries()).sort((a, b) => {
+                const [valA] = a;
+                const [valB] = b;
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return valA - valB;
+                }
+                return String(valA).localeCompare(String(valB));
+            });
+            
+            sortedValues.forEach(([value, count]) => {
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = JSON.stringify(value);
+                // 既存のフィルタがある場合は、選択された値のみチェック
+                // フィルタがない場合は、デフォルトでチェックなし
+                checkbox.checked = existingFilter && existingFilter.active ? selectedValues.has(value) : false;
+                
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'filter-value';
+                valueSpan.textContent = String(value);
+                valueSpan.title = String(value);
+                
+                const countSpan = document.createElement('span');
+                countSpan.className = 'filter-count';
+                // フィルタ適用中は、フィルタ後の件数も表示
+                const filteredCount = filteredCounts.get(value) || 0;
+                if (existingFilter && existingFilter.active) {
+                    countSpan.textContent = `(${filteredCount}/${count})`;
+                    countSpan.title = `フィルタ後: ${filteredCount}件 / 全体: ${count}件`;
+                } else {
+                    countSpan.textContent = `(${count})`;
+                }
+                
+                label.appendChild(checkbox);
+                label.appendChild(valueSpan);
+                label.appendChild(countSpan);
+                listDiv.appendChild(label);
+            });
+            
+            dropdown.appendChild(listDiv);
+            
+            // フッター
+            const footer = document.createElement('div');
+            footer.className = 'filter-footer';
+            
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-filter-btn';
+            applyBtn.textContent = '適用';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                applyCheckboxFilter(columnPath, dropdown);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-filter-btn';
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeActiveFilterDropdown();
+            };
+            
+            footer.appendChild(applyBtn);
+            footer.appendChild(cancelBtn);
+            dropdown.appendChild(footer);
+        }
+        
+        // TODO: 範囲フィルタとテキストフィルタの実装
+        
+        // ドロップダウン内のクリックを処理
+        dropdown.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        return dropdown;
+    }
+    
+    // ドロップダウン外クリックのハンドラー
+    function handleOutsideClick(e) {
+        if (activeFilterDropdown && !activeFilterDropdown.contains(e.target) && 
+            !e.target.closest('.filter-icon')) {
+            closeActiveFilterDropdown();
+        }
+    }
+    
+    // フィルタアイテムの全選択/全解除
+    function selectAllFilterItems(dropdown, checked) {
+        const checkboxes = dropdown.querySelectorAll('.filter-list input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = checked);
+    }
+    
+    // フィルタアイテムの検索
+    function filterFilterItems(dropdown, searchText) {
+        const items = dropdown.querySelectorAll('.filter-item');
+        
+        if (!searchText.trim()) {
+            // 検索テキストが空の場合は全て表示
+            items.forEach(item => item.style.display = 'flex');
+            return;
+        }
+        
+        // 検索クエリをパース（全体検索と同じロジック）
+        const queries = parseSearchQuery(searchText);
+        
+        items.forEach(item => {
+            const value = item.querySelector('.filter-value').textContent.toLowerCase();
+            let matches = false;
+            
+            if (queries.mode === 'AND') {
+                // AND検索: すべての条件を満たす
+                matches = queries.terms.every(term => 
+                    value.includes(term.toLowerCase())
+                );
+            } else {
+                // OR検索: いずれかの条件を満たす
+                matches = queries.terms.some(term => 
+                    value.includes(term.toLowerCase())
+                );
+            }
+            
+            item.style.display = matches ? 'flex' : 'none';
+        });
+    }
+    
+    // チェックボックスフィルタを適用
+    function applyCheckboxFilter(columnPath, dropdown) {
+        const checkboxes = dropdown.querySelectorAll('.filter-list input[type="checkbox"]:checked');
+        const selectedValues = new Set();
+        
+        checkboxes.forEach(cb => {
+            const value = JSON.parse(cb.value);
+            selectedValues.add(value);
+        });
+        
+        if (selectedValues.size === 0) {
+            // フィルタをクリア
+            columnFilters.delete(columnPath);
+        } else {
+            // フィルタを設定
+            columnFilters.set(columnPath, {
+                type: 'checkbox',
+                active: true,
+                selectedValues: selectedValues
+            });
+        }
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ドロップダウンを閉じる
+        closeActiveFilterDropdown();
+    }
+    
+    // フィルタアイコンの状態を更新
+    function updateFilterIcons() {
+        document.querySelectorAll('.filter-icon').forEach(icon => {
+            const columnPath = icon.dataset.columnPath;
+            const filter = columnFilters.get(columnPath);
+            
+            if (filter && filter.active) {
+                icon.classList.add('active');
+            } else {
+                icon.classList.remove('active');
+            }
+        });
     }
     
     // ソートアイコンを更新
