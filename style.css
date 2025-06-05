@@ -319,10 +319,31 @@ body.table-tab-active {
     position: sticky;
     top: 0;
     z-index: 10;
-    min-width: 150px;
+    min-width: 100px;
+    max-width: 300px;  /* 最大幅を制限 */
     min-height: 42px;  /* 空文字列でも高さを確保 */
     height: 42px;  /* 固定高さを設定 */
     line-height: 22px;  /* 垂直方向の中央揃えを調整 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ホバー時にツールチップ風に表示 */
+#table-container th[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    background-color: #333;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-size: 12px;
+    font-weight: normal;
+    z-index: 1000;
+    pointer-events: none;
 }
 
 /* 複数行ヘッダの固定 - 画面に対してスティッキー */
@@ -778,4 +799,69 @@ body.table-tab-active {
     text-align: center;
     color: #999;
     font-style: italic;
+}
+
+/* 左右スクロールボタン */
+.scroll-button-area {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+}
+
+.table-tab-active .scroll-button-area {
+    display: flex;
+}
+
+.scroll-button-area.scroll-left {
+    left: 0;
+}
+
+.scroll-button-area.scroll-right {
+    right: 0;
+}
+
+.scroll-button-area:hover {
+    opacity: 1;
+}
+
+.scroll-button {
+    background-color: rgba(0, 0, 0, 0.1);
+    width: 50px;
+    height: 100%;
+    max-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 8px 8px 0;
+    transition: background-color 0.3s ease;
+}
+
+.scroll-left .scroll-button {
+    border-radius: 0 8px 8px 0;
+}
+
+.scroll-right .scroll-button {
+    border-radius: 8px 0 0 8px;
+}
+
+.scroll-button:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.scroll-arrow {
+    font-size: 36px;
+    color: #666;
+    font-weight: bold;
+}
+
+.scroll-button:hover .scroll-arrow {
+    color: #333;
 }

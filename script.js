@@ -42,6 +42,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.classList.add('table-tab-active');
             document.querySelector('.container').classList.add('table-tab-active');
             if (tableControls) tableControls.style.display = 'block';
+            // スクロールボタンの表示状態を更新
+            if (typeof setupScrollButtons === 'function') {
+                setupScrollButtons();
+            }
         } else {
             document.body.classList.remove('table-tab-active');
             document.querySelector('.container').classList.remove('table-tab-active');
@@ -437,6 +441,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 cellContent.textContent = cell.key;  // 空文字列の場合は空のまま
                 th.appendChild(cellContent);
                 
+                // 長いキー名の場合はtitle属性を追加
+                if (cell.key && cell.key.length > 20) {
+                    th.title = cell.key;
+                }
+                
                 // ×アイコンを追加（すべての列に）
                 const hideBtn = document.createElement('span');
                 hideBtn.className = 'column-hide-btn';
@@ -513,6 +522,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 横スクロールの同期設定
         setupHorizontalScrollSync();
+        
+        // スクロールボタンの設定
+        setupScrollButtons();
     }
     
     // 横スクロールの同期設定
@@ -779,6 +791,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // ＋ボタンの状態を更新
         updateShowColumnsButton();
+        
+        // スクロールボタンの表示状態を更新
+        setTimeout(() => {
+            if (typeof setupScrollButtons === 'function') {
+                setupScrollButtons();
+            }
+        }, 100);
     }
     
     // 子が全て非表示の親を自動的に非表示にする
@@ -930,6 +949,102 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // 左右スクロールボタンの設定
+    function setupScrollButtons() {
+        const leftButton = document.getElementById('scroll-left-area');
+        const rightButton = document.getElementById('scroll-right-area');
+        const tableContainer = document.getElementById('table-container');
+        const scrollWrapper = document.getElementById('horizontal-scroll-wrapper');
+        
+        if (!leftButton || !rightButton || !tableContainer) return;
+        
+        // スクロール量（画面幅の半分）
+        const getScrollAmount = () => window.innerWidth / 2;
+        
+        // スムーズスクロール関数
+        function smoothScroll(element, targetScrollLeft, duration = 100) {
+            const startScrollLeft = element.scrollLeft;
+            const distance = targetScrollLeft - startScrollLeft;
+            const startTime = performance.now();
+            
+            function animation(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // イージング関数（ease-out）
+                const easeOut = 1 - Math.pow(1 - progress, 3);
+                
+                element.scrollLeft = startScrollLeft + (distance * easeOut);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animation);
+                }
+            }
+            
+            requestAnimationFrame(animation);
+        }
+        
+        // 左スクロールボタンのクリック
+        leftButton.addEventListener('click', () => {
+            const scrollAmount = getScrollAmount();
+            
+            if (tableContainer) {
+                const newScrollLeft = Math.max(0, tableContainer.scrollLeft - scrollAmount);
+                smoothScroll(tableContainer, newScrollLeft);
+            }
+            
+            if (scrollWrapper) {
+                const scrollContent = scrollWrapper.querySelector('#horizontal-scroll-content');
+                if (scrollContent) {
+                    const newScrollLeft = Math.max(0, scrollContent.scrollLeft - scrollAmount);
+                    smoothScroll(scrollContent, newScrollLeft);
+                }
+            }
+        });
+        
+        // 右スクロールボタンのクリック
+        rightButton.addEventListener('click', () => {
+            const scrollAmount = getScrollAmount();
+            
+            if (tableContainer) {
+                const maxScroll = tableContainer.scrollWidth - tableContainer.clientWidth;
+                const newScrollLeft = Math.min(maxScroll, tableContainer.scrollLeft + scrollAmount);
+                smoothScroll(tableContainer, newScrollLeft);
+            }
+            
+            if (scrollWrapper) {
+                const scrollContent = scrollWrapper.querySelector('#horizontal-scroll-content');
+                if (scrollContent) {
+                    const maxScroll = scrollContent.scrollWidth - scrollContent.clientWidth;
+                    const newScrollLeft = Math.min(maxScroll, scrollContent.scrollLeft + scrollAmount);
+                    smoothScroll(scrollContent, newScrollLeft);
+                }
+            }
+        });
+        
+        // スクロール可能かチェックして表示/非表示を制御
+        function updateScrollButtonsVisibility() {
+            if (!tableContainer) return;
+            
+            const hasHorizontalScroll = tableContainer.scrollWidth > tableContainer.clientWidth;
+            const isTableTabActive = document.body.classList.contains('table-tab-active');
+            
+            if (hasHorizontalScroll && isTableTabActive) {
+                leftButton.style.display = 'flex';
+                rightButton.style.display = 'flex';
+            } else {
+                leftButton.style.display = 'none';
+                rightButton.style.display = 'none';
+            }
+        }
+        
+        // ウィンドウのリサイズ時に表示状態を更新
+        window.addEventListener('resize', updateScrollButtonsVisibility);
+        
+        // 初期状態をチェック
+        updateScrollButtonsVisibility();
+    }
+    
     // インデントガイドを生成
     function createIndentGuides(level) {
         let guides = '';
