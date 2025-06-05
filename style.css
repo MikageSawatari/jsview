@@ -324,10 +324,17 @@ body.table-tab-active {
     min-height: 42px;  /* 空文字列でも高さを確保 */
     height: 42px;  /* 固定高さを設定 */
     line-height: 22px;  /* 垂直方向の中央揃えを調整 */
+    overflow: visible;  /* インジケーターが見えるように変更 */
+    vertical-align: top;  /* rowspanがある場合に上揃えにする */
+}
+
+/* ヘッダテキストの省略表示 */
+#table-container th > span:first-of-type {
+    display: inline-block;
+    max-width: calc(100% - 30px);  /* ×ボタンの幅を考慮 */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    vertical-align: top;  /* rowspanがある場合に上揃えにする */
 }
 
 /* rowspanが設定されているヘッダセルの調整 */
@@ -870,4 +877,27 @@ body.table-tab-active {
 
 .scroll-button:hover .scroll-arrow {
     color: #333;
+}
+
+/* 値の存在率インジケーター */
+.existence-indicator {
+    position: absolute;
+    bottom: 3px;
+    left: 10px;
+    width: 70px;  /* 固定幅に変更 */
+    height: 3px;
+    display: flex;
+    gap: 1px;
+    z-index: 1;  /* テキストの上に表示 */
+}
+
+.existence-dot {
+    flex: 1;
+    height: 100%;
+    background-color: #e0e0e0;
+    transition: background-color 0.3s ease;
+}
+
+.existence-dot.filled {
+    background-color: #4CAF50;
 }

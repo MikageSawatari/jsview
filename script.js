@@ -392,6 +392,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // ヘッダ行を生成
         const headerRows = generateHeaderRows(keyTree, maxDepth);
         
+        // 各列の値の存在率を計算
+        const existenceRates = calculateExistenceRates(parsedData, keyTree);
+        
         // フラットなキーリストを作成（データ表示用）
         flatKeys = []; // グローバル変数をリセット
         function collectFlatKeys(rows) {
@@ -517,6 +520,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentTableContainer = document.getElementById('table-container');
         currentTableContainer.innerHTML = '';
         currentTableContainer.appendChild(table);
+        
+        // 存在率インジケーターを最下層のヘッダセルに追加
+        addExistenceIndicators(table, headerRows, existenceRates);
         
         // 列の階層関係を構築
         buildColumnHierarchy(headerRows);
@@ -644,6 +650,107 @@ document.addEventListener('DOMContentLoaded', function() {
         columnHierarchy = {};
     }
 
+    // 値の存在率を計算する関数
+    function calculateExistenceRates(data, keyTree) {
+        const rates = new Map();
+        const totalRows = data.length;
+        
+        if (totalRows === 0) return rates;
+        
+        // 各キーパスの値の存在数をカウント
+        function countValues(node, parentPath = '') {
+            // 空文字列キーの特別処理
+            const currentPath = node.key === '' ? 
+                (parentPath || '') : 
+                (parentPath ? `${parentPath}.${node.key}` : node.key);
+            
+            // リーフノードの場合のみ存在率を計算
+            if (Object.keys(node.children).length === 0) {
+                // このパスに値が存在する行数をカウント
+                let count = 0;
+                data.forEach(row => {
+                    const value = getValueByPath(row, currentPath);
+                    if (value !== undefined && value !== null && value !== '') {
+                        count++;
+                    }
+                });
+                
+                // 存在率を計算（0〜100%）
+                const rate = Math.round((count / totalRows) * 100);
+                rates.set(currentPath, rate);
+            }
+            
+            // 子ノードも処理
+            Object.values(node.children).forEach(child => {
+                countValues(child, currentPath);
+            });
+        }
+        
+        // ルートノードから開始
+        Object.values(keyTree.children).forEach(child => {
+            countValues(child);
+        });
+        
+        return rates;
+    }
+    
+    // パスから値を取得するヘルパー関数
+    function getValueByPath(obj, path) {
+        const parts = path.split('.');
+        let current = obj;
+        
+        for (const part of parts) {
+            if (current && typeof current === 'object' && part in current) {
+                current = current[part];
+            } else {
+                return undefined;
+            }
+        }
+        
+        return current;
+    }
+    
+    // 存在率インジケーターを作成
+    function createExistenceIndicator(rate) {
+        const indicator = document.createElement('div');
+        indicator.className = 'existence-indicator';
+        indicator.title = `${rate}%のデータに値が存在`;
+        
+        // 10個のドットを作成（10%刻み）
+        for (let i = 1; i <= 10; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'existence-dot';
+            
+            // 存在率に応じてドットを塗りつぶす
+            const threshold = i * 10;
+            if (rate >= threshold - 5) {  // 5%の余裕を持たせる
+                dot.classList.add('filled');
+            }
+            
+            indicator.appendChild(dot);
+        }
+        
+        return indicator;
+    }
+    
+    // 最下層のヘッダセルに存在率インジケーターを追加
+    function addExistenceIndicators(table, headerRows, existenceRates) {
+        if (headerRows.length === 0) return;
+        
+        const thead = table.querySelector('thead');
+        
+        // flatKeysを使用してリーフノードを特定（より確実）
+        flatKeys.forEach(key => {
+            const th = thead.querySelector(`th[data-column-path="${key}"]`);
+            if (th) {
+                // このセルの存在率を取得
+                const rate = existenceRates.get(key) || 0;
+                const indicator = createExistenceIndicator(rate);
+                th.appendChild(indicator);
+            }
+        });
+    }
+    
     // 列の階層関係を構築
     function buildColumnHierarchy(headerRows) {
         columnHierarchy = {};
