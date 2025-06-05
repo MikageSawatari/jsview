@@ -901,3 +901,39 @@ body.table-tab-active {
 .existence-dot.filled {
     background-color: #4CAF50;
 }
+
+/* ソート機能 */
+.header-text {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.sort-icon {
+    position: absolute;
+    right: 28px;  /* ×ボタンの左側に配置 */
+    top: 10px;  /* ×ボタンと同じ高さに固定 */
+    z-index: 3;
+    display: none;  /* デフォルトは非表示 */
+}
+
+/* ソート中の列のみアイコンを表示 */
+.sort-icon.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ソート可能なヘッダのホバー効果 */
+#table-container th[style*="cursor: pointer"]:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}

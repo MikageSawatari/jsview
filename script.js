@@ -17,6 +17,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const autoHiddenColumns = new Set(); // 自動的に非表示になった列
     let columnHierarchy = {}; // 列の階層関係
     let flatKeys = []; // フラットなキーリスト（データ表示用）
+    
+    // ソート状態の管理
+    let sortState = {
+        column: null,  // ソート中の列
+        order: null    // 'asc', 'desc', null
+    };
 
     // タブ切り替え機能
     function switchTab(tabName, pushState = true) {
@@ -101,6 +107,10 @@ document.addEventListener('DOMContentLoaded', function() {
             hiddenByParent.clear();
             autoHiddenColumns.clear();
             columnHierarchy = {};
+            
+            // ソート状態をリセット
+            sortState.column = null;
+            sortState.order = null;
             
             // メニューを閉じる
             const menu = document.getElementById('hidden-columns-menu');
@@ -402,32 +412,61 @@ document.addEventListener('DOMContentLoaded', function() {
             const columnOrder = [];
             const maxRow = rows.length;
             
-            // 各列の開始位置を記録
-            const columnStarts = new Map();
-            let currentColumn = 0;
+            // 各列の実際の位置を正確に計算
+            const columnPositions = new Map();
+            
+            // 最初の行から開始して、各セルの実際の列位置を追跡
+            const cellTracker = [];
+            for (let i = 0; i < maxRow; i++) {
+                cellTracker[i] = [];
+            }
             
             rows.forEach((row, rowIndex) => {
                 let colPos = 0;
                 row.forEach(cell => {
-                    // この列の開始位置を記録
-                    if (!columnStarts.has(cell.fullPath)) {
-                        columnStarts.set(cell.fullPath, colPos);
+                    // 現在の行で空いている最初の位置を見つける
+                    while (cellTracker[rowIndex][colPos]) {
+                        colPos++;
+                    }
+                    
+                    // このセルが占める領域をマーク
+                    for (let r = 0; r < (cell.rowspan || 1); r++) {
+                        for (let c = 0; c < (cell.colspan || 1); c++) {
+                            if (rowIndex + r < maxRow) {
+                                cellTracker[rowIndex + r][colPos + c] = true;
+                            }
+                        }
+                    }
+                    
+                    // このパスの位置を記録（最初に出現した位置を使用）
+                    if (!columnPositions.has(cell.fullPath)) {
+                        columnPositions.set(cell.fullPath, colPos);
                     }
                     
                     // リーフノードまたは値用ノードで、かつこのセルが最終行まで延びている場合
                     if ((cell.isLeaf || cell.key === '') && 
-                        (rowIndex + cell.rowspan === maxRow)) {
-                        columnOrder.push({ path: cell.fullPath, position: colPos });
+                        (rowIndex + (cell.rowspan || 1) === maxRow)) {
+                        const position = columnPositions.get(cell.fullPath);
+                        columnOrder.push({ path: cell.fullPath, position: position });
                     }
                     
-                    // 次の列位置を計算
+                    // 次の開始位置
                     colPos += cell.colspan || 1;
                 });
             });
             
+            // 重複を除去（同じパスが複数回追加される可能性があるため）
+            const uniqueColumns = new Map();
+            columnOrder.forEach(col => {
+                uniqueColumns.set(col.path, col.position);
+            });
+            
             // 位置順にソートしてパスを抽出
-            columnOrder.sort((a, b) => a.position - b.position);
-            columnOrder.forEach(col => flatKeys.push(col.path));
+            const sortedColumns = Array.from(uniqueColumns.entries())
+                .sort((a, b) => a[1] - b[1])
+                .map(entry => entry[0]);
+            
+            sortedColumns.forEach(path => flatKeys.push(path));
         }
         if (headerRows.length > 0) {
             collectFlatKeys(headerRows);
@@ -446,9 +485,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 const th = document.createElement('th');
                 th.dataset.columnPath = cell.fullPath;
                 
-                // セルの内容を作成
+                // セルの内容を作成（リーフノードの場合はクリック可能）
                 const cellContent = document.createElement('span');
-                cellContent.textContent = cell.key;  // 空文字列の場合は空のまま
+                cellContent.className = 'header-text';
+                
+                // テキスト部分を別の要素に
+                const textSpan = document.createElement('span');
+                textSpan.textContent = cell.key;  // 空文字列の場合は空のまま
+                cellContent.appendChild(textSpan);
+                
+                // 親要素の場合は何もしない（クリック不可）
+                
                 th.appendChild(cellContent);
                 
                 // 長いキー名の場合はtitle属性を追加
@@ -479,12 +526,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         table.appendChild(thead);
         
+        // ソートされたデータを取得
+        const sortedData = getSortedData();
+        
         // データ行の作成
         const tbody = document.createElement('tbody');
         
-        parsedData.forEach((item, index) => {
+        sortedData.forEach((item, index) => {
             const row = document.createElement('tr');
-            row.dataset.index = index;
+            // 元のデータでのインデックスを保持
+            const originalIndex = parsedData.indexOf(item);
+            row.dataset.originalIndex = originalIndex;
             
             flatKeys.forEach(key => {
                 const td = document.createElement('td');
@@ -538,6 +590,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // スクロールボタンの設定
         setupScrollButtons();
+        
+        // ソートアイコンを更新（DOMが完全に構築された後に実行）
+        setTimeout(() => {
+            updateSortIcons();
+        }, 0);
     }
     
     // 横スクロールの同期設定
@@ -696,18 +753,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // パスから値を取得するヘルパー関数
     function getValueByPath(obj, path) {
-        const parts = path.split('.');
-        let current = obj;
+        let value;
         
-        for (const part of parts) {
-            if (current && typeof current === 'object' && part in current) {
-                current = current[part];
-            } else {
+        // 値用ノードの場合（パスが"."で終わる場合）
+        if (path.endsWith('.')) {
+            const realPath = path.slice(0, -1);
+            if (realPath === '') {
+                // ルートレベルの値は存在しない
                 return undefined;
+            }
+            const keys = realPath.split('.');
+            value = obj;
+            
+            for (const key of keys) {
+                if (value === null || value === undefined) {
+                    return undefined;
+                }
+                value = value[key];
+            }
+            
+            // このキーがオブジェクトの場合は値ではない
+            if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+                return undefined;
+            }
+        } else {
+            // 通常のパスの場合
+            const keys = path.split('.');
+            value = obj;
+            
+            for (const key of keys) {
+                if (value === null || value === undefined) {
+                    return undefined;
+                }
+                value = value[key];
             }
         }
         
-        return current;
+        return value;
     }
     
     // 存在率インジケーターを作成
@@ -733,7 +815,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return indicator;
     }
     
-    // 最下層のヘッダセルに存在率インジケーターを追加
+    // 最下層のヘッダセルに存在率インジケーターとソート機能を追加
     function addExistenceIndicators(table, headerRows, existenceRates) {
         if (headerRows.length === 0) return;
         
@@ -747,8 +829,135 @@ document.addEventListener('DOMContentLoaded', function() {
                 const rate = existenceRates.get(key) || 0;
                 const indicator = createExistenceIndicator(rate);
                 th.appendChild(indicator);
+                
+                // ソート機能を追加
+                th.style.cursor = 'pointer';
+                th.addEventListener('click', (e) => {
+                    // ×ボタンのクリックは除外
+                    if (e.target.closest('.column-hide-btn')) {
+                        return;
+                    }
+                    e.stopPropagation();
+                    handleHeaderClick(key);
+                });
+                
+                // ソートアイコンを×ボタンの前に追加
+                const sortIcon = document.createElement('span');
+                sortIcon.className = 'sort-icon';
+                sortIcon.dataset.columnPath = key;
+                
+                // ×ボタンの前に挿入
+                const hideBtn = th.querySelector('.column-hide-btn');
+                if (hideBtn) {
+                    th.insertBefore(sortIcon, hideBtn);
+                } else {
+                    th.appendChild(sortIcon);
+                }
             }
         });
+    }
+    
+    // ヘッダクリックのハンドラー
+    function handleHeaderClick(columnPath) {
+        // 現在のスクロール位置を保存
+        const tableContainer = document.getElementById('table-container');
+        const scrollLeft = tableContainer ? tableContainer.scrollLeft : 0;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // ソート状態を切り替え
+        if (sortState.column === columnPath) {
+            // 同じ列をクリックした場合: desc -> asc -> null
+            if (sortState.order === 'desc') {
+                sortState.order = 'asc';
+            } else if (sortState.order === 'asc') {
+                sortState.order = null;
+                sortState.column = null;
+            }
+        } else {
+            // 別の列をクリックした場合: 降順から開始
+            sortState.column = columnPath;
+            sortState.order = 'desc';
+        }
+        
+        // テーブルを再作成（ソートを反映させるため）
+        createTable();
+        
+        // スクロール位置を復元
+        setTimeout(() => {
+            const newTableContainer = document.getElementById('table-container');
+            if (newTableContainer && scrollLeft > 0) {
+                newTableContainer.scrollLeft = scrollLeft;
+            }
+            if (scrollTop > 0) {
+                window.scrollTo(0, scrollTop);
+            }
+        }, 0);
+    }
+    
+    // ソート比較関数
+    function compareValues(a, b, order) {
+        // null/undefined/空文字列は常に最後に
+        const aIsEmpty = a === null || a === undefined || a === '';
+        const bIsEmpty = b === null || b === undefined || b === '';
+        
+        if (aIsEmpty && bIsEmpty) return 0;
+        if (aIsEmpty) return 1;  // aが空なら後ろ
+        if (bIsEmpty) return -1; // bが空なら後ろ
+        
+        // 数値と文字列の混在処理
+        const aIsNumber = typeof a === 'number';
+        const bIsNumber = typeof b === 'number';
+        
+        if (aIsNumber && !bIsNumber) {
+            return -1;  // 数値を前に
+        }
+        if (!aIsNumber && bIsNumber) {
+            return 1;   // 文字列を後に
+        }
+        
+        // 同じ型同士の比較
+        if (aIsNumber && bIsNumber) {
+            return order === 'asc' ? a - b : b - a;
+        } else {
+            // 文字列比較
+            const result = String(a).localeCompare(String(b));
+            return order === 'asc' ? result : -result;
+        }
+    }
+    
+    // データをソート
+    function getSortedData() {
+        if (!sortState.column || !sortState.order) {
+            return parsedData;  // ソートなし
+        }
+        
+        // データをコピーしてソート
+        return [...parsedData].sort((rowA, rowB) => {
+            const valueA = getValueByPath(rowA, sortState.column);
+            const valueB = getValueByPath(rowB, sortState.column);
+            return compareValues(valueA, valueB, sortState.order);
+        });
+    }
+    
+    // ソートアイコンを更新
+    function updateSortIcons() {
+        // すべてのソートアイコンを非アクティブに
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.classList.remove('active');
+            icon.textContent = '';
+        });
+        
+        // 現在ソート中の列にアイコンを表示
+        if (sortState.column && sortState.order) {
+            // エスケープが必要な文字を含む可能性があるため、属性セレクタを使用
+            const icons = document.querySelectorAll('.sort-icon');
+            icons.forEach(icon => {
+                if (icon.dataset.columnPath === sortState.column) {
+                    icon.classList.add('active');
+                    icon.textContent = sortState.order === 'asc' ? '↑' : '↓';
+                }
+            });
+        }
     }
     
     // 列の階層関係を構築
