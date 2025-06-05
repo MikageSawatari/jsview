@@ -11,6 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // パースされたJSONデータを保持
     let parsedData = [];
     
+    // sessionStorageのキー
+    const STORAGE_KEY_INPUT = 'jsonlines_input';
+    const STORAGE_KEY_PARSED = 'jsonlines_parsed';
+    const STORAGE_KEY_TAB = 'jsonlines_active_tab';
+    
     // 非表示列の管理
     const hiddenColumns = new Set();
     const hiddenByParent = new Map(); // 親によって非表示になった列
@@ -128,6 +133,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (menu) {
                 menu.classList.remove('active');
             }
+            
+            // パースしたデータをsessionStorageに保存
+            sessionStorage.setItem(STORAGE_KEY_PARSED, JSON.stringify(parsedData));
+            sessionStorage.setItem(STORAGE_KEY_TAB, 'table');
             
             createTable();
             switchTab('table');
@@ -740,6 +749,11 @@ document.addEventListener('DOMContentLoaded', function() {
         searchState.query = '';
         const searchBox = document.getElementById('search-box');
         if (searchBox) searchBox.value = '';
+        
+        // sessionStorageをクリア
+        sessionStorage.removeItem(STORAGE_KEY_INPUT);
+        sessionStorage.removeItem(STORAGE_KEY_PARSED);
+        sessionStorage.removeItem(STORAGE_KEY_TAB);
     }
 
     // 値の存在率を計算する関数
@@ -1375,6 +1389,11 @@ document.addEventListener('DOMContentLoaded', function() {
             formatJsonLines();
         }
     });
+    
+    // 入力フィールドの内容をsessionStorageに保存
+    inputElement.addEventListener('input', function() {
+        sessionStorage.setItem(STORAGE_KEY_INPUT, inputElement.value);
+    });
 
     // 左右スクロールボタンの設定
     function setupScrollButtons() {
@@ -1840,19 +1859,44 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初期状態の設定
     const initialHash = window.location.hash;
+    
+    // sessionStorageからデータを復元
+    const savedInput = sessionStorage.getItem(STORAGE_KEY_INPUT);
+    const savedParsed = sessionStorage.getItem(STORAGE_KEY_PARSED);
+    const savedTab = sessionStorage.getItem(STORAGE_KEY_TAB);
+    
+    if (savedInput) {
+        inputElement.value = savedInput;
+    }
+    
+    if (savedParsed) {
+        try {
+            parsedData = JSON.parse(savedParsed);
+            if (parsedData.length > 0 && savedTab === 'table') {
+                // テーブルを再作成
+                createTable();
+                switchTab('table', false);
+            }
+        } catch (e) {
+            console.error('sessionStorageからのデータ復元に失敗しました:', e);
+            parsedData = [];
+        }
+    }
+    
+    // URLハッシュがある場合はそれを優先
     if (initialHash) {
-        if (initialHash === '#table') {
+        if (initialHash === '#table' && parsedData.length > 0) {
             switchTab('table', false);
         } else if (initialHash === '#input') {
             switchTab('input', false);
         }
-    } else {
-        // 初期状態を履歴に追加
+    } else if (!savedTab) {
+        // 初期状態を履歴に追加（sessionStorageにデータがない場合のみ）
         history.replaceState({ view: 'tab', tab: 'input' }, '', '#input');
     }
     
     const initialTableContainer = document.getElementById('table-container');
-    if (initialTableContainer) {
+    if (initialTableContainer && (!savedParsed || parsedData.length === 0)) {
         initialTableContainer.innerHTML = '';
     }
     
