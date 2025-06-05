@@ -568,6 +568,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const value = getNestedValue(item, key, true);
                 const displayValue = getNestedValue(item, key);
                 
+                // 数値の場合は右寄せクラスを追加
+                if (typeof value === 'number') {
+                    td.classList.add('numeric-cell');
+                }
+                
                 // 文字列が省略されている場合、クリック可能にする
                 if (typeof value === 'string' && value.length > 30) {
                     td.innerHTML = `<span class="truncated-string" title="クリックして全体を表示">${escapeHtml(displayValue)}</span>`;

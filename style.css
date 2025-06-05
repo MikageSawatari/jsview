@@ -471,6 +471,11 @@ body.table-tab-active {
     max-width: 300px;
 }
 
+/* 数値セルの右寄せ */
+#table-container td.numeric-cell {
+    text-align: right;
+}
+
 #table-container tbody tr:hover {
     background-color: #e8f4f8;
     cursor: pointer;
