@@ -527,6 +527,23 @@ body.table-tab-active {
     border-bottom: 1px solid #e0e0e0;
 }
 
+.expand-all-btn {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-left: auto;
+    margin-right: 10px;
+    transition: background-color 0.2s;
+}
+
+.expand-all-btn:hover {
+    background: #45a049;
+}
+
 .dialog-header h3 {
     margin: 0;
     color: #333;
@@ -1178,6 +1195,39 @@ body.table-tab-active {
 
 .cancel-filter-btn:hover {
     background: #f0f0f0;
+}
+
+.clear-filter-btn {
+    background: #ff9800;
+    color: white;
+    border: none;
+}
+
+.clear-filter-btn:hover {
+    background: #f57c00;
+}
+
+/* 全体フィルタクリアボタン */
+.clear-all-filters-btn {
+    padding: 8px 15px;
+    background: #ff5722;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.2s;
+}
+
+.clear-all-filters-btn:hover {
+    background: #e64a19;
+}
+
+.clear-all-filters-btn .filter-icon {
+    font-size: 16px;
 }
 
 /* フィルタドロップダウンの位置調整用 */

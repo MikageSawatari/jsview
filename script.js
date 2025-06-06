@@ -1422,17 +1422,29 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.classList.add('active');
             activeFilterDropdown = dropdown;
             
+            // ESCキーのイベントリスナー
+            handleEscKey = function(e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    closeActiveFilterDropdown();
+                }
+            };
+            
             // 外側クリックのイベントリスナーを登録（次のイベントループで）
             setTimeout(() => {
                 document.addEventListener('click', handleOutsideClick, true);
                 document.addEventListener('mousedown', handleGlobalMouseDown, true);
                 document.addEventListener('mousemove', handleGlobalMouseMove, true);
                 document.addEventListener('mouseup', handleGlobalMouseUp, true);
+                document.addEventListener('keydown', handleEscKey);
             }, 0);
         }, 10);
     }
     
     // アクティブなフィルタドロップダウンを閉じる
+    // ESCキーのイベントハンドラ（グローバルスコープで定義）
+    let handleEscKey = null;
+    
     function closeActiveFilterDropdown() {
         if (activeFilterDropdown) {
             activeFilterDropdown.classList.remove('active');
@@ -1440,6 +1452,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.removeEventListener('mousedown', handleGlobalMouseDown, true);
             document.removeEventListener('mousemove', handleGlobalMouseMove, true);
             document.removeEventListener('mouseup', handleGlobalMouseUp, true);
+            if (handleEscKey) {
+                document.removeEventListener('keydown', handleEscKey);
+                handleEscKey = null;
+            }
             isDragging = false;  // 状態をリセット
             dragStartElement = null;
             mouseDownPos = { x: 0, y: 0 };
@@ -1571,6 +1587,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filter-btn';
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                // すべてのチェックボックスを外す
+                dropdown.querySelectorAll('.filter-item input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+                // フィルタを適用
+                applyCheckboxFilter(columnPath, dropdown);
+            };
+            
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
             applyBtn.textContent = '適用';
@@ -1587,6 +1616,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
+            footer.appendChild(clearBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -1778,6 +1808,22 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filter-btn';
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                // すべてのチェックボックスを外す
+                dropdown.querySelectorAll('.filter-range-list input[type="checkbox"]').forEach(cb => {
+                    cb.checked = false;
+                });
+                // カスタム範囲をクリア
+                minInput.value = '';
+                maxInput.value = '';
+                // フィルタを適用
+                applyRangeFilter(columnPath, dropdown, minInput, maxInput);
+            };
+            
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
             applyBtn.textContent = '適用';
@@ -1794,6 +1840,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
+            footer.appendChild(clearBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -1861,6 +1908,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filter-btn';
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                // 日付入力をクリア
+                startInput.value = '';
+                endInput.value = '';
+                // フィルタを適用
+                applyDateFilter(columnPath, '', '');
+            };
+            
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
             applyBtn.textContent = '適用';
@@ -1877,6 +1936,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
+            footer.appendChild(clearBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -1946,6 +2006,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filter-btn';
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                // 日時入力をクリア
+                startInput.value = '';
+                endInput.value = '';
+                // フィルタを適用
+                applyDateTimeFilter(columnPath, '', '');
+            };
+            
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
             applyBtn.textContent = '適用';
@@ -1962,6 +2034,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
+            footer.appendChild(clearBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -2032,6 +2105,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
+            const clearBtn = document.createElement('button');
+            clearBtn.className = 'clear-filter-btn';
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                // テキストエリアをクリア
+                textarea.value = '';
+                // フィルタを適用
+                applyTextFilter(columnPath, '');
+            };
+            
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
             applyBtn.textContent = '適用';
@@ -2048,6 +2132,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
+            footer.appendChild(clearBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -2357,16 +2442,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // フィルタアイコンの状態を更新
     function updateFilterIcons() {
+        let hasActiveFilter = false;
+        
         document.querySelectorAll('.filter-icon').forEach(icon => {
             const columnPath = icon.dataset.columnPath;
             const filter = columnFilters.get(columnPath);
             
             if (filter && filter.active) {
                 icon.classList.add('active');
+                hasActiveFilter = true;
             } else {
                 icon.classList.remove('active');
             }
         });
+        
+        // 全体フィルタクリアボタンの表示/非表示
+        const clearAllFiltersBtn = document.getElementById('clear-all-filters-btn');
+        if (clearAllFiltersBtn) {
+            clearAllFiltersBtn.style.display = hasActiveFilter ? 'flex' : 'none';
+        }
     }
     
     // ソートアイコンを更新
@@ -2951,6 +3045,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // 文字列をリセット
         window.fullStrings = {};
         
+        // 全体展開ボタンをリセット
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        expandAllBtn.disabled = false;
+        expandAllBtn.style.opacity = '1';
+        expandAllBtn.style.cursor = 'pointer';
+        
         jsonDisplay.innerHTML = jsonToHtml(json, 0, false, '', true);
         dialog.classList.add('active');
         
@@ -3124,13 +3224,63 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // ESCキーでダイアログを閉じる
+    // 全体展開ボタンのイベント
+    const expandAllBtn = document.getElementById('expand-all-btn');
+    expandAllBtn.addEventListener('click', () => {
+        const jsonDisplay = document.getElementById('json-display');
+        
+        // すべての省略された文字列を展開
+        jsonDisplay.querySelectorAll('.expandable-string').forEach(span => {
+            const fullString = span.dataset.fullString;
+            if (fullString) {
+                span.textContent = JSON.stringify(fullString);
+                span.classList.remove('expandable-string');
+                span.style.cursor = 'default';
+            }
+        });
+        
+        // すべての省略された配列を展開
+        jsonDisplay.querySelectorAll('.expand-array').forEach(link => {
+            const arrayId = link.dataset.arrayId;
+            if (arrayId) {
+                expandArray(arrayId);
+            }
+        });
+        
+        // すべての折りたたまれたオブジェクトを展開
+        jsonDisplay.querySelectorAll('.collapsible-group.collapsed').forEach(group => {
+            group.classList.remove('collapsed');
+            const objId = group.id.replace('group-', '');
+            const toggleBtn = document.querySelector(`[data-obj-id="${objId}"]`);
+            if (toggleBtn) {
+                toggleBtn.textContent = '▼';
+            }
+        });
+        
+        // ボタンを無効化（一度だけ使用可能）
+        expandAllBtn.disabled = true;
+        expandAllBtn.style.opacity = '0.5';
+        expandAllBtn.style.cursor = 'not-allowed';
+    });
+    
+    // ESCキーでダイアログを閉じる、Ctrl+Fで検索ボックスにフォーカス
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (stringDialog.classList.contains('active')) {
                 closeStringDialog();
             } else if (jsonDialog.classList.contains('active')) {
                 closeJsonDialog();
+            }
+        } else if (e.ctrlKey && e.key === 'f') {
+            // テーブルタブがアクティブな場合のみ
+            const tableTab = document.getElementById('table-tab');
+            if (tableTab && tableTab.classList.contains('active')) {
+                e.preventDefault();
+                const searchBox = document.getElementById('search-box');
+                if (searchBox) {
+                    searchBox.focus();
+                    searchBox.select(); // テキストを全選択
+                }
             }
         }
     });
@@ -3234,6 +3384,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 非表示列のリストを更新
         updateHiddenColumnsList();
+    });
+    
+    // 全体フィルタクリアボタンのイベント設定
+    const clearAllFiltersBtn = document.getElementById('clear-all-filters-btn');
+    clearAllFiltersBtn.addEventListener('click', () => {
+        // すべてのフィルタをクリア
+        columnFilters.clear();
+        
+        // フィルタを保存
+        saveFiltersToStorage();
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ボタンを非表示
+        clearAllFiltersBtn.style.display = 'none';
     });
     
     // メニュー外をクリックしたら閉じる

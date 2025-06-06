@@ -22,6 +22,10 @@
                     <input type="text" id="search-box" class="search-box" placeholder="検索... (スペース:AND, ;:OR)">
                     <button id="clear-search-btn" class="clear-search-btn" title="検索をクリア">&times;</button>
                 </div>
+                <!-- フィルタクリアボタン -->
+                <button id="clear-all-filters-btn" class="clear-all-filters-btn" title="すべてのフィルタをクリア" style="display: none;">
+                    <span class="filter-icon">🔽</span> フィルタをクリア
+                </button>
                 <!-- 列の再表示ボタンコンテナ -->
                 <div class="show-columns-container">
                     <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
@@ -75,6 +79,7 @@
         <div class="dialog-content">
             <div class="dialog-header">
                 <h3>JSON詳細</h3>
+                <button id="expand-all-btn" class="expand-all-btn" title="すべて展開">⇔</button>
                 <button class="dialog-close">&times;</button>
             </div>
             <div class="dialog-body">
