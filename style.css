@@ -68,6 +68,13 @@ label {
     color: #555;
 }
 
+.privacy-note {
+    font-size: 12px;
+    font-weight: normal;
+    color: #888;
+    margin-left: 10px;
+}
+
 textarea {
     width: 100%;
     flex: 1;

@@ -3,7 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON Lines Pretty Printer</title>
+    <title>JSON Lines Pretty Printer - JSONL整形ツール</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="JSON Lines (JSONL) 形式のデータを整形して見やすく表示する無料オンラインツール。複数行のJSONを個別にパース、テーブル表示、構文ハイライト付きのPretty Print機能を提供。データはブラウザ上で処理され、サーバには送信されません。">
+    <meta name="keywords" content="JSON Lines, JSONL, JSON Pretty Print, JSON整形, JSONフォーマッタ, JSON Viewer, JSONL Viewer, オンラインツール">
+    <meta name="author" content="JSON Lines Pretty Printer">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="JSON Lines Pretty Printer - JSONL整形ツール">
+    <meta property="og:description" content="JSON Lines形式のデータを整形して見やすく表示。テーブル表示、構文ハイライト、フィルタ機能付き。">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="JSON Lines Pretty Printer">
+    <meta name="twitter:description" content="JSON Lines形式のデータを整形して見やすく表示。完全にブラウザ上で動作。">
+    
+    <!-- その他のメタ情報 -->
+    <meta name="robots" content="index, follow">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -41,7 +61,10 @@
         <div class="tab-content">
             <div id="input-tab" class="tab-panel active">
                 <div class="input-section">
-                    <label for="input">JSON Lines を入力:</label>
+                    <label for="input">
+                        JSON Lines を入力:
+                        <span class="privacy-note">※内容はサーバに送信されません。ブラウザ上で処理されます。</span>
+                    </label>
                     <textarea id="input" placeholder='{"name": "mikage", "age": 12, "score": {"game": 100, "english": 50}}&#10;{"name": "tomomi", "email": "test@example.com", "score": {"game": 80, "english": 90}}'></textarea>
                     <div class="button-group">
                         <button id="formatBtn">整形</button>
