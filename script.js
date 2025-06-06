@@ -1,4 +1,140 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // 多言語対応
+    const translations = {
+        ja: {
+            title: 'JSON Lines Pretty Printer',
+            inputTab: '入力',
+            tableTab: 'テーブル',
+            inputLabel: 'JSON Lines を入力:',
+            privacyNote: '※内容はサーバに送信されません。ブラウザ上で処理されます。',
+            formatBtn: '整形',
+            clearBtn: 'クリア',
+            uploadBtn: 'ファイルから読み込み',
+            searchPlaceholder: '検索...',
+            clearAllFilters: 'すべてのフィルタをクリア',
+            hiddenColumns: '非表示の列',
+            noResults: '該当するデータが見つかりませんでした',
+            errorSkipped: '行中{skipped}行がエラーのためスキップしました',
+            fileReadError: 'ファイルの読み込みに失敗しました。',
+            parseError: 'JSONのパースに失敗しました',
+            emptyInput: 'JSON Lines を入力してください',
+            emptyInput: 'データを入力してください',
+            // フィルタ関連
+            filterTitle: 'フィルタ',
+            selectAll: 'すべて選択',
+            deselectAll: 'すべて解除',
+            apply: '適用',
+            cancel: 'キャンセル',
+            clear: 'クリア',
+            searchInFilter: 'フィルタ内検索...',
+            customRange: 'カスタム範囲',
+            minValue: '最小値',
+            maxValue: '最大値',
+            startDate: '開始日',
+            endDate: '終了日',
+            startDateTime: '開始日時',
+            endDateTime: '終了日時',
+            filterPlaceholder: '検索条件を入力（改行でOR）'
+        },
+        en: {
+            title: 'JSON Lines Pretty Printer',
+            inputTab: 'Input',
+            tableTab: 'Table',
+            inputLabel: 'Enter JSON Lines:',
+            privacyNote: '※Data is processed in your browser and not sent to any server.',
+            formatBtn: 'Format',
+            clearBtn: 'Clear',
+            uploadBtn: 'Load from File',
+            searchPlaceholder: 'Search...',
+            clearAllFilters: 'Clear All Filters',
+            hiddenColumns: 'Hidden Columns',
+            noResults: 'No matching data found',
+            errorSkipped: '{skipped} lines skipped due to errors',
+            fileReadError: 'Failed to read file.',
+            parseError: 'Failed to parse JSON',
+            emptyInput: 'Please enter JSON Lines',
+            emptyInput: 'Please enter data',
+            // フィルタ関連
+            filterTitle: 'Filter',
+            selectAll: 'Select All',
+            deselectAll: 'Deselect All',
+            apply: 'Apply',
+            cancel: 'Cancel',
+            clear: 'Clear',
+            searchInFilter: 'Search in filter...',
+            customRange: 'Custom Range',
+            minValue: 'Min',
+            maxValue: 'Max',
+            startDate: 'Start Date',
+            endDate: 'End Date',
+            startDateTime: 'Start DateTime',
+            endDateTime: 'End DateTime',
+            filterPlaceholder: 'Enter search terms (new line for OR)'
+        }
+    };
+    
+    // 言語の初期設定
+    let currentLang = localStorage.getItem('jsonlines_lang') || 
+                     (navigator.language.startsWith('ja') ? 'ja' : 'en');
+    
+    // テキストを取得する関数
+    function t(key) {
+        return translations[currentLang][key] || translations['en'][key] || key;
+    }
+    
+    // UI要素の更新
+    function updateUILanguage() {
+        // HTML lang属性とタイトル
+        document.getElementById('html-root').lang = currentLang;
+        document.title = t('title') + (currentLang === 'ja' ? ' - JSONL整形ツール' : ' - JSONL Formatter');
+        
+        // タイトル
+        document.querySelector('h1').textContent = t('title');
+        
+        // タブ
+        document.querySelector('[data-tab="input"]').textContent = t('inputTab');
+        document.querySelector('[data-tab="table"]').textContent = t('tableTab');
+        
+        // 入力フォーム
+        const labelElement = document.querySelector('label[for="input"]');
+        labelElement.innerHTML = `
+            ${t('inputLabel')}
+            <span class="privacy-note">${t('privacyNote')}</span>
+        `;
+        
+        // ボタン
+        document.getElementById('formatBtn').textContent = t('formatBtn');
+        document.getElementById('clearBtn').textContent = t('clearBtn');
+        document.querySelector('.upload-btn').textContent = t('uploadBtn');
+        
+        // 検索ボックス
+        const searchBox = document.getElementById('search-box');
+        if (searchBox) searchBox.placeholder = t('searchPlaceholder');
+        
+        // フィルタクリアボタン
+        const clearFiltersBtn = document.getElementById('clear-all-filters-btn');
+        if (clearFiltersBtn) clearFiltersBtn.title = t('clearAllFilters');
+        
+        // 非表示列メニュー
+        const menuHeader = document.querySelector('.menu-header');
+        if (menuHeader) menuHeader.textContent = t('hiddenColumns');
+        
+        // テーブルを再描画（列名の更新が必要な場合）
+        if (parsedData.length > 0 && document.querySelector('#table-tab').classList.contains('active')) {
+            createTable();
+        }
+    }
+    
+    // 言語切り替え
+    document.getElementById('lang-switch').addEventListener('click', () => {
+        currentLang = currentLang === 'ja' ? 'en' : 'ja';
+        localStorage.setItem('jsonlines_lang', currentLang);
+        updateUILanguage();
+    });
+    
+    // 初期化時に言語を適用
+    updateUILanguage();
+    
     const inputElement = document.getElementById('input');
     const formatBtn = document.getElementById('formatBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -98,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         parsedData = [];
 
         if (!input) {
-            alert('JSON Lines を入力してください');
+            alert(t('emptyInput'));
             return;
         }
 
@@ -128,13 +264,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // エラーがあった場合はアラートを表示（ただし処理は続行）
         if (errorCount > 0) {
-            alert(`${totalLines}行中${errorCount}行がエラーのためスキップしました。\n\n` + 
-                  (errors.length > 10 ? errors.slice(0, 10).join('\n') + '\n... 他' + (errors.length - 10) + '件のエラー' : errors.join('\n')));
+            alert(t('errorSkipped').replace('{skipped}', errorCount) + '\n\n' + 
+                  (errors.length > 10 ? errors.slice(0, 10).join('\n') + '\n...' : errors.join('\n')));
         }
         
         // 有効なデータが1つもない場合はエラー
         if (parsedData.length === 0) {
-            alert('有効なJSONデータがありませんでした。');
+            alert(t('parseError'));
             return;
         }
 
@@ -591,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const emptyCell = document.createElement('td');
             emptyCell.setAttribute('colspan', flatKeys.length || 1);
             emptyCell.className = 'no-results-message';
-            emptyCell.textContent = `「${searchState.query}」に一致するデータが見つかりませんでした`;
+            emptyCell.textContent = `「${searchState.query}」${t('noResults')}`;
             emptyRow.appendChild(emptyCell);
             tbody.appendChild(emptyRow);
         }
@@ -1524,20 +1660,20 @@ document.addEventListener('DOMContentLoaded', function() {
             header.className = 'filter-header';
             
             const headerTitle = document.createElement('span');
-            headerTitle.textContent = 'チェックボックスフィルタ';
+            headerTitle.textContent = t('filterTitle');
             headerTitle.style.fontWeight = 'bold';
             headerTitle.style.marginRight = 'auto';
             header.appendChild(headerTitle);
             
             const selectAllBtn = document.createElement('button');
-            selectAllBtn.textContent = 'すべて選択';
+            selectAllBtn.textContent = t('selectAll');
             selectAllBtn.onclick = (e) => {
                 e.stopPropagation();
                 selectAllFilterItems(dropdown, true);
             };
             
             const clearAllBtn = document.createElement('button');
-            clearAllBtn.textContent = 'すべて解除';
+            clearAllBtn.textContent = t('deselectAll');
             clearAllBtn.onclick = (e) => {
                 e.stopPropagation();
                 selectAllFilterItems(dropdown, false);
@@ -1620,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const clearBtn = document.createElement('button');
             clearBtn.className = 'clear-filter-btn';
-            clearBtn.textContent = 'クリア';
+            clearBtn.textContent = t('clear');
             clearBtn.onclick = (e) => {
                 e.stopPropagation();
                 // すべてのチェックボックスを外す
@@ -1633,7 +1769,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
-            applyBtn.textContent = '適用';
+            applyBtn.textContent = t('apply');
             applyBtn.onclick = (e) => {
                 e.stopPropagation();
                 applyCheckboxFilter(columnPath, dropdown);
@@ -1641,7 +1777,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cancel-filter-btn';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('cancel');
             cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeActiveFilterDropdown();
@@ -1662,7 +1798,7 @@ document.addEventListener('DOMContentLoaded', function() {
             header.className = 'filter-header';
             
             const headerTitle = document.createElement('span');
-            headerTitle.textContent = '数値範囲フィルタ';
+            headerTitle.textContent = t('filterTitle') + ' (' + t('minValue') + '/' + t('maxValue') + ')';
             headerTitle.style.fontWeight = 'bold';
             headerTitle.style.marginRight = 'auto';
             header.appendChild(headerTitle);
@@ -1675,7 +1811,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             const clearAllBtn = document.createElement('button');
-            clearAllBtn.textContent = 'すべて解除';
+            clearAllBtn.textContent = t('deselectAll');
             clearAllBtn.onclick = (e) => {
                 e.stopPropagation();
                 selectAllFilterItems(dropdown, false);
@@ -1691,7 +1827,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const minInput = document.createElement('input');
             minInput.type = 'number';
-            minInput.placeholder = '最小値';
+            minInput.placeholder = t('minValue');
             minInput.value = existingFilter?.customMin || '';
             
             const separator = document.createElement('span');
@@ -1699,7 +1835,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const maxInput = document.createElement('input');
             maxInput.type = 'number';
-            maxInput.placeholder = '最大値';
+            maxInput.placeholder = t('maxValue');
             maxInput.value = existingFilter?.customMax || '';
             
             rangeInputs.appendChild(minInput);
@@ -1841,7 +1977,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const clearBtn = document.createElement('button');
             clearBtn.className = 'clear-filter-btn';
-            clearBtn.textContent = 'クリア';
+            clearBtn.textContent = t('clear');
             clearBtn.onclick = (e) => {
                 e.stopPropagation();
                 // すべてのチェックボックスを外す
@@ -1857,7 +1993,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
-            applyBtn.textContent = '適用';
+            applyBtn.textContent = t('apply');
             applyBtn.onclick = (e) => {
                 e.stopPropagation();
                 applyRangeFilter(columnPath, dropdown, minInput, maxInput);
@@ -1865,7 +2001,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cancel-filter-btn';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('cancel');
             cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeActiveFilterDropdown();
@@ -1885,13 +2021,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const header = document.createElement('div');
             header.className = 'filter-header';
             const headerTitle = document.createElement('span');
-            headerTitle.textContent = '日付フィルタ';
+            headerTitle.textContent = t('filterTitle') + ' (' + t('startDate') + '/' + t('endDate') + ')';
             headerTitle.style.fontWeight = 'bold';
             headerTitle.style.marginRight = 'auto';
             header.appendChild(headerTitle);
             
             const clearBtn = document.createElement('button');
-            clearBtn.textContent = 'クリア';
+            clearBtn.textContent = t('clear');
             clearBtn.onclick = (e) => {
                 e.stopPropagation();
                 const startInput = dropdown.querySelector('.date-start');
@@ -1953,7 +2089,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
-            applyBtn.textContent = '適用';
+            applyBtn.textContent = t('apply');
             applyBtn.onclick = (e) => {
                 e.stopPropagation();
                 applyDateFilter(columnPath, startInput.value, endInput.value);
@@ -1961,7 +2097,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cancel-filter-btn';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('cancel');
             cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeActiveFilterDropdown();
@@ -1981,13 +2117,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const header = document.createElement('div');
             header.className = 'filter-header';
             const headerTitle = document.createElement('span');
-            headerTitle.textContent = '日時フィルタ';
+            headerTitle.textContent = t('filterTitle') + ' (' + t('startDateTime') + '/' + t('endDateTime') + ')';
             headerTitle.style.fontWeight = 'bold';
             headerTitle.style.marginRight = 'auto';
             header.appendChild(headerTitle);
             
             const clearBtn = document.createElement('button');
-            clearBtn.textContent = 'クリア';
+            clearBtn.textContent = t('clear');
             clearBtn.onclick = (e) => {
                 e.stopPropagation();
                 const startInput = dropdown.querySelector('.datetime-start');
@@ -2051,7 +2187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
-            applyBtn.textContent = '適用';
+            applyBtn.textContent = t('apply');
             applyBtn.onclick = (e) => {
                 e.stopPropagation();
                 applyDateTimeFilter(columnPath, startInput.value, endInput.value);
@@ -2059,7 +2195,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cancel-filter-btn';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('cancel');
             cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeActiveFilterDropdown();
@@ -2079,11 +2215,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const header = document.createElement('div');
             header.className = 'filter-header';
             const headerText = document.createElement('span');
-            headerText.textContent = 'テキストフィルタ';
+            headerText.textContent = t('filterTitle');
             header.appendChild(headerText);
             
             const clearBtn = document.createElement('button');
-            clearBtn.textContent = 'クリア';
+            clearBtn.textContent = t('clear');
             clearBtn.onclick = (e) => {
                 e.stopPropagation();
                 const textarea = dropdown.querySelector('textarea');
@@ -2149,7 +2285,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const applyBtn = document.createElement('button');
             applyBtn.className = 'apply-filter-btn';
-            applyBtn.textContent = '適用';
+            applyBtn.textContent = t('apply');
             applyBtn.onclick = (e) => {
                 e.stopPropagation();
                 applyTextFilter(columnPath, textarea.value);
@@ -2157,7 +2293,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'cancel-filter-btn';
-            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.textContent = t('cancel');
             cancelBtn.onclick = (e) => {
                 e.stopPropagation();
                 closeActiveFilterDropdown();
@@ -3588,7 +3724,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         reader.onerror = () => {
-            alert('ファイルの読み込みに失敗しました。');
+            alert(t('fileReadError'));
         };
         
         reader.readAsText(file);
