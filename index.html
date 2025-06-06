@@ -43,8 +43,14 @@
                 <div class="input-section">
                     <label for="input">JSON Lines を入力:</label>
                     <textarea id="input" placeholder='{"name": "mikage", "age": 12, "score": {"game": 100, "english": 50}}&#10;{"name": "tomomi", "email": "test@example.com", "score": {"game": 80, "english": 90}}'></textarea>
-                    <button id="formatBtn">整形</button>
-                    <button id="clearBtn">クリア</button>
+                    <div class="button-group">
+                        <button id="formatBtn">整形</button>
+                        <button id="clearBtn">クリア</button>
+                        <div class="file-upload-group">
+                            <input type="file" id="fileInput" accept=".jsonl,.txt,.json" style="display: none;">
+                            <button id="uploadBtn" class="upload-btn">ファイルから読み込み</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             

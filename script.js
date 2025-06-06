@@ -3534,4 +3534,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // ファイルアップロード機能
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    
+    uploadBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+    
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target.result;
+            inputElement.value = content;
+            // sessionStorageに保存
+            sessionStorage.setItem(STORAGE_KEY_INPUT, content);
+            // ファイル選択をリセット
+            fileInput.value = '';
+        };
+        
+        reader.onerror = () => {
+            alert('ファイルの読み込みに失敗しました。');
+        };
+        
+        reader.readAsText(file);
+    });
 });
