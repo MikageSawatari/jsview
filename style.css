@@ -262,20 +262,24 @@ button {
     top: -8px;  /* タブの下線より上に配置 */
     z-index: 50;
     display: none;  /* 初期状態では非表示 */
+    white-space: nowrap;  /* 子要素を横並びに強制 */
 }
 
 /* 検索ボックスコンテナ */
 .search-box-container {
     position: relative;
-    display: inline-block;
-    margin-right: 10px;
+    display: inline-flex;  /* inline-flexで他の要素と横並びに */
+    align-items: center;
 }
 
 /* テーブルタブが選択されている場合のみ表示 */
 .table-tab-active .table-controls {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 10px;
+    flex-wrap: nowrap;
+    width: max-content;  /* コンテンツの最大幅に合わせる */
 }
 
 /* 検索ボックス */
@@ -847,17 +851,11 @@ body.table-tab-active {
     cursor: not-allowed;
 }
 
-/* 列再表示ボタンコンテナ */
-.show-columns-container {
-    position: relative;
-    display: inline-block;
-}
+/* 削除：show-columns-containerは使用しない */
 
 /* 非表示列のメニュー */
-.hidden-columns-menu {
-    position: absolute;
-    top: 40px;
-    right: 0;
+#hidden-columns-menu {
+    /* positionとtop/rightはJavaScriptで動的に設定 */
     background: white;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -868,8 +866,8 @@ body.table-tab-active {
     z-index: 100;
 }
 
-.hidden-columns-menu.active {
-    display: block;
+#hidden-columns-menu.active {
+    display: block !important;
 }
 
 .menu-header {
@@ -1209,25 +1207,34 @@ body.table-tab-active {
 
 /* 全体フィルタクリアボタン */
 .clear-all-filters-btn {
-    padding: 8px 15px;
+    width: 30px;
+    height: 30px;
     background: #ff5722;
     color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 50%;
     cursor: pointer;
     font-size: 14px;
     display: flex;
     align-items: center;
-    gap: 5px;
-    transition: background-color 0.2s;
+    justify-content: center;
+    transition: background-color 0.3s, opacity 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.clear-all-filters-btn:hover {
+.clear-all-filters-btn:hover:not(:disabled) {
     background: #e64a19;
 }
 
-.clear-all-filters-btn .filter-icon {
-    font-size: 16px;
+.clear-all-filters-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.clear-all-filters-btn .filter-clear-icon {
+    font-size: 14px;
+    font-weight: bold;
 }
 
 /* フィルタドロップダウンの位置調整用 */

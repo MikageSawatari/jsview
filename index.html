@@ -22,20 +22,19 @@
                     <input type="text" id="search-box" class="search-box" placeholder="検索... (スペース:AND, ;:OR)">
                     <button id="clear-search-btn" class="clear-search-btn" title="検索をクリア">&times;</button>
                 </div>
-                <!-- フィルタクリアボタン -->
-                <button id="clear-all-filters-btn" class="clear-all-filters-btn" title="すべてのフィルタをクリア" style="display: none;">
-                    <span class="filter-icon">🔽</span> フィルタをクリア
+                <!-- 列の再表示ボタン -->
+                <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
+                    <span class="plus-icon">+</span>
                 </button>
-                <!-- 列の再表示ボタンコンテナ -->
-                <div class="show-columns-container">
-                    <button id="show-columns-btn" class="show-columns-btn" title="非表示列を表示">
-                        <span class="plus-icon">+</span>
-                    </button>
-                    <div id="hidden-columns-menu" class="hidden-columns-menu">
-                        <div class="menu-header">非表示の列</div>
-                        <div id="hidden-columns-list" class="hidden-columns-list"></div>
-                    </div>
-                </div>
+                <!-- フィルタクリアボタン -->
+                <button id="clear-all-filters-btn" class="clear-all-filters-btn icon-btn" title="すべてのフィルタをクリア" disabled>
+                    <span class="filter-clear-icon">×▼</span>
+                </button>
+            </div>
+            <!-- 非表示列メニュー（table-controlsの外に配置） -->
+            <div id="hidden-columns-menu" class="hidden-columns-menu">
+                <div class="menu-header">非表示の列</div>
+                <div id="hidden-columns-list" class="hidden-columns-list"></div>
             </div>
         </div>
         

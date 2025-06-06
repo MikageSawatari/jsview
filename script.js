@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabName === 'table') {
             document.body.classList.add('table-tab-active');
             document.querySelector('.container').classList.add('table-tab-active');
-            if (tableControls) tableControls.style.display = 'block';
+            // CSSでdisplayを制御するため、直接設定は削除
             // スクロールボタンの表示状態を更新
             if (typeof setupScrollButtons === 'function') {
                 setupScrollButtons();
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             document.body.classList.remove('table-tab-active');
             document.querySelector('.container').classList.remove('table-tab-active');
-            if (tableControls) tableControls.style.display = 'none';
+            // CSSでdisplayを制御するため、直接設定は削除
         }
         
         // History APIに状態を追加
@@ -1908,10 +1908,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
-            const clearBtn = document.createElement('button');
-            clearBtn.className = 'clear-filter-btn';
-            clearBtn.textContent = 'クリア';
-            clearBtn.onclick = (e) => {
+            const clearFilterBtn = document.createElement('button');
+            clearFilterBtn.className = 'clear-filter-btn';
+            clearFilterBtn.textContent = 'クリア';
+            clearFilterBtn.onclick = (e) => {
                 e.stopPropagation();
                 // 日付入力をクリア
                 startInput.value = '';
@@ -1936,7 +1936,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
-            footer.appendChild(clearBtn);
+            footer.appendChild(clearFilterBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -2006,10 +2006,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
-            const clearBtn = document.createElement('button');
-            clearBtn.className = 'clear-filter-btn';
-            clearBtn.textContent = 'クリア';
-            clearBtn.onclick = (e) => {
+            const clearFilterBtn = document.createElement('button');
+            clearFilterBtn.className = 'clear-filter-btn';
+            clearFilterBtn.textContent = 'クリア';
+            clearFilterBtn.onclick = (e) => {
                 e.stopPropagation();
                 // 日時入力をクリア
                 startInput.value = '';
@@ -2034,7 +2034,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
-            footer.appendChild(clearBtn);
+            footer.appendChild(clearFilterBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -2105,10 +2105,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const footer = document.createElement('div');
             footer.className = 'filter-footer';
             
-            const clearBtn = document.createElement('button');
-            clearBtn.className = 'clear-filter-btn';
-            clearBtn.textContent = 'クリア';
-            clearBtn.onclick = (e) => {
+            const clearFilterBtn = document.createElement('button');
+            clearFilterBtn.className = 'clear-filter-btn';
+            clearFilterBtn.textContent = 'クリア';
+            clearFilterBtn.onclick = (e) => {
                 e.stopPropagation();
                 // テキストエリアをクリア
                 textarea.value = '';
@@ -2132,7 +2132,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closeActiveFilterDropdown();
             };
             
-            footer.appendChild(clearBtn);
+            footer.appendChild(clearFilterBtn);
             footer.appendChild(applyBtn);
             footer.appendChild(cancelBtn);
             dropdown.appendChild(footer);
@@ -2456,10 +2456,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // 全体フィルタクリアボタンの表示/非表示
+        // 全体フィルタクリアボタンのdisabled状態を更新
         const clearAllFiltersBtn = document.getElementById('clear-all-filters-btn');
         if (clearAllFiltersBtn) {
-            clearAllFiltersBtn.style.display = hasActiveFilter ? 'flex' : 'none';
+            clearAllFiltersBtn.disabled = !hasActiveFilter;
         }
     }
     
@@ -3230,30 +3230,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const jsonDisplay = document.getElementById('json-display');
         
         // すべての省略された文字列を展開
-        jsonDisplay.querySelectorAll('.expandable-string').forEach(span => {
-            const fullString = span.dataset.fullString;
-            if (fullString) {
-                span.textContent = JSON.stringify(fullString);
-                span.classList.remove('expandable-string');
+        jsonDisplay.querySelectorAll('.truncated-string').forEach(span => {
+            const stringId = span.dataset.stringId;
+            if (stringId && window.fullStrings && window.fullStrings[stringId]) {
+                const fullString = window.fullStrings[stringId];
+                span.textContent = `"${fullString}"`;
+                span.classList.remove('truncated-string');
+                span.removeAttribute('data-action');
                 span.style.cursor = 'default';
+                span.title = '';
             }
         });
         
         // すべての省略された配列を展開
         jsonDisplay.querySelectorAll('.expand-array').forEach(link => {
-            const arrayId = link.dataset.arrayId;
+            const arrayId = link.dataset.target;
             if (arrayId) {
                 expandArray(arrayId);
             }
         });
         
         // すべての折りたたまれたオブジェクトを展開
-        jsonDisplay.querySelectorAll('.collapsible-group.collapsed').forEach(group => {
-            group.classList.remove('collapsed');
-            const objId = group.id.replace('group-', '');
-            const toggleBtn = document.querySelector(`[data-obj-id="${objId}"]`);
-            if (toggleBtn) {
-                toggleBtn.textContent = '▼';
+        jsonDisplay.querySelectorAll('.collapsible-group').forEach(group => {
+            if (group.style.display === 'none') {
+                const objId = group.id;
+                const placeholder = document.getElementById(objId + '-placeholder');
+                const closingBracket = document.getElementById(objId + '-closing');
+                const icon = document.querySelector(`[data-target="${objId}"] .collapse-icon`);
+                
+                // 展開
+                group.style.display = 'inline';
+                if (placeholder) placeholder.style.display = 'none';
+                if (closingBracket) closingBracket.style.display = 'inline';
+                if (icon) icon.textContent = '▼';
             }
         });
         
@@ -3379,6 +3388,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.stopPropagation();
         if (hiddenColumns.size === 0) return;
         
+        // メニューの位置を＋ボタンの下に設定
+        const btnRect = showBtn.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (btnRect.bottom + 5) + 'px';
+        menu.style.right = (window.innerWidth - btnRect.right) + 'px';
+        
         // メニューの表示/非表示を切り替え
         menu.classList.toggle('active');
         
@@ -3400,9 +3415,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // テーブルを再作成
         createTable();
-        
-        // ボタンを非表示
-        clearAllFiltersBtn.style.display = 'none';
     });
     
     // メニュー外をクリックしたら閉じる
