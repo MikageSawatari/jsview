@@ -544,14 +544,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 textSpan.textContent = cell.key;  // 空文字列の場合は空のまま
                 cellContent.appendChild(textSpan);
                 
+                // title属性を設定（すべてのキーに対して）
+                if (cell.key) {
+                    cellContent.title = cell.key;
+                }
+                
                 // 親要素の場合は何もしない（クリック不可）
                 
                 th.appendChild(cellContent);
-                
-                // 長いキー名の場合はtitle属性を追加
-                if (cell.key && cell.key.length > 20) {
-                    th.title = cell.key;
-                }
                 
                 // ×アイコンを追加（すべての列に）
                 const hideBtn = document.createElement('span');

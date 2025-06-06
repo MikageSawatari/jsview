@@ -441,11 +441,16 @@ body.table-tab-active {
 }
 
 /* ホバー時にツールチップ風に表示 */
-#table-container th[title]:hover::after {
+#table-container .header-text[title] {
+    position: relative;
+}
+
+#table-container .header-text[title]:hover::after {
     content: attr(title);
     position: absolute;
     bottom: 100%;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     background-color: #333;
     color: white;
     padding: 5px 10px;
@@ -453,8 +458,9 @@ body.table-tab-active {
     white-space: nowrap;
     font-size: 12px;
     font-weight: normal;
-    z-index: 1000;
+    z-index: 10000;
     pointer-events: none;
+    margin-bottom: 5px;
 }
 
 /* 複数行ヘッダの固定 - 画面に対してスティッキー */
