@@ -1061,6 +1061,37 @@ document.addEventListener('DOMContentLoaded', function() {
                         // matchesQueryを使用して統一的に処理
                         return matchesQuery({ [columnPath]: value }, queries);
                     }
+                    else if (filter.type === 'date') {
+                        // 日付フィルタ: 日付範囲に含まれるか
+                        if (!value || !isDateFormat(value)) return false;
+                        
+                        const valueDate = new Date(value);
+                        if (filter.startDate) {
+                            const startDate = new Date(filter.startDate);
+                            if (valueDate < startDate) return false;
+                        }
+                        if (filter.endDate) {
+                            const endDate = new Date(filter.endDate);
+                            if (valueDate > endDate) return false;
+                        }
+                        return true;
+                    }
+                    else if (filter.type === 'datetime') {
+                        // 日時フィルタ: 日時範囲に含まれるか
+                        if (!value || !isDateTimeFormat(value)) return false;
+                        
+                        const valueDateTime = new Date(value);
+                        if (filter.startDateTime) {
+                            // datetime-localから取得した値をローカルタイムとして扱う
+                            const startDateTime = new Date(filter.startDateTime);
+                            if (valueDateTime < startDateTime) return false;
+                        }
+                        if (filter.endDateTime) {
+                            const endDateTime = new Date(filter.endDateTime);
+                            if (valueDateTime > endDateTime) return false;
+                        }
+                        return true;
+                    }
                     
                     return true;
                 });
@@ -1117,6 +1148,37 @@ document.addEventListener('DOMContentLoaded', function() {
                         const queries = parseSearchQuery(filter.query);
                         // matchesQueryを使用して統一的に処理
                         return matchesQuery({ [columnPath]: value }, queries);
+                    }
+                    else if (filter.type === 'date') {
+                        // 日付フィルタ: 日付範囲に含まれるか
+                        if (!value || !isDateFormat(value)) return false;
+                        
+                        const valueDate = new Date(value);
+                        if (filter.startDate) {
+                            const startDate = new Date(filter.startDate);
+                            if (valueDate < startDate) return false;
+                        }
+                        if (filter.endDate) {
+                            const endDate = new Date(filter.endDate);
+                            if (valueDate > endDate) return false;
+                        }
+                        return true;
+                    }
+                    else if (filter.type === 'datetime') {
+                        // 日時フィルタ: 日時範囲に含まれるか
+                        if (!value || !isDateTimeFormat(value)) return false;
+                        
+                        const valueDateTime = new Date(value);
+                        if (filter.startDateTime) {
+                            // datetime-localから取得した値をローカルタイムとして扱う
+                            const startDateTime = new Date(filter.startDateTime);
+                            if (valueDateTime < startDateTime) return false;
+                        }
+                        if (filter.endDateTime) {
+                            const endDateTime = new Date(filter.endDateTime);
+                            if (valueDateTime > endDateTime) return false;
+                        }
+                        return true;
                     }
                     
                     return true;
@@ -1225,17 +1287,31 @@ document.addEventListener('DOMContentLoaded', function() {
         const numericValues = [];
         let hasNumeric = true;
         let hasNonNumeric = false;
+        let allDates = true;
+        let allDateTimes = true;
+        let hasValues = false;
         
         // 元のデータ（parsedData）から値を収集（フィルタ前の全データ）
         parsedData.forEach(row => {
             const value = getValueByPath(row, columnPath);
             if (value !== null && value !== undefined && value !== '') {
                 values.set(value, (values.get(value) || 0) + 1);
+                hasValues = true;
                 
                 if (typeof value === 'number') {
                     numericValues.push(value);
+                    allDates = false;
+                    allDateTimes = false;
                 } else {
                     hasNonNumeric = true;
+                    
+                    // 日付・日時形式のチェック
+                    if (!isDateFormat(value)) {
+                        allDates = false;
+                    }
+                    if (!isDateTimeFormat(value)) {
+                        allDateTimes = false;
+                    }
                 }
             }
         });
@@ -1243,18 +1319,54 @@ document.addEventListener('DOMContentLoaded', function() {
         // すべて数値の場合のみ数値フィルタとして扱う
         const isNumeric = numericValues.length > 0 && !hasNonNumeric;
         
+        // 値がある場合のみ日付・日時型として判定
+        const isDate = hasValues && allDates && !isNumeric;
+        const isDateTime = hasValues && allDateTimes && !isNumeric;
+        
         return {
             uniqueCount: values.size,
             values: values,
             isNumeric: isNumeric,
-            numericValues: numericValues
+            numericValues: numericValues,
+            isDate: isDate,
+            isDateTime: isDateTime
         };
+    }
+    
+    // 日付形式をチェックする関数
+    function isDateFormat(value) {
+        if (typeof value !== 'string') return false;
+        
+        // YYYY-MM-DD形式
+        const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+        if (datePattern.test(value)) {
+            const date = new Date(value);
+            return !isNaN(date.getTime());
+        }
+        return false;
+    }
+    
+    // 日時形式をチェックする関数
+    function isDateTimeFormat(value) {
+        if (typeof value !== 'string') return false;
+        
+        // ISO 8601形式（タイムゾーン付き）
+        const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?(Z|[+-]\d{2}:\d{2})$/;
+        if (isoPattern.test(value)) {
+            const date = new Date(value);
+            return !isNaN(date.getTime());
+        }
+        return false;
     }
     
     // フィルタタイプを決定する関数
     function determineFilterType(analysis) {
         if (analysis.uniqueCount === 0) {
             return 'empty';
+        } else if (analysis.isDate) {
+            return 'date';
+        } else if (analysis.isDateTime) {
+            return 'datetime';
         } else if (analysis.uniqueCount <= 20) {
             return 'checkbox';
         } else if (analysis.isNumeric) {
@@ -1685,6 +1797,174 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.appendChild(footer);
         }
         
+        // 日付フィルタの場合
+        else if (filterType === 'date') {
+            const existingFilter = columnFilters.get(columnPath);
+            
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'filter-header';
+            const headerTitle = document.createElement('span');
+            headerTitle.textContent = '日付フィルタ';
+            headerTitle.style.fontWeight = 'bold';
+            headerTitle.style.marginRight = 'auto';
+            header.appendChild(headerTitle);
+            
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                const startInput = dropdown.querySelector('.date-start');
+                const endInput = dropdown.querySelector('.date-end');
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            };
+            header.appendChild(clearBtn);
+            
+            dropdown.appendChild(header);
+            
+            // 日付範囲入力
+            const rangeDiv = document.createElement('div');
+            rangeDiv.className = 'filter-date-range';
+            rangeDiv.style.padding = '10px';
+            
+            const startLabel = document.createElement('label');
+            startLabel.textContent = '開始日:';
+            startLabel.style.display = 'block';
+            startLabel.style.marginBottom = '5px';
+            const startInput = document.createElement('input');
+            startInput.type = 'date';
+            startInput.className = 'date-start';
+            startInput.value = existingFilter?.startDate || '';
+            startInput.style.width = '100%';
+            startInput.style.marginBottom = '10px';
+            
+            const endLabel = document.createElement('label');
+            endLabel.textContent = '終了日:';
+            endLabel.style.display = 'block';
+            endLabel.style.marginBottom = '5px';
+            const endInput = document.createElement('input');
+            endInput.type = 'date';
+            endInput.className = 'date-end';
+            endInput.value = existingFilter?.endDate || '';
+            endInput.style.width = '100%';
+            
+            rangeDiv.appendChild(startLabel);
+            rangeDiv.appendChild(startInput);
+            rangeDiv.appendChild(endLabel);
+            rangeDiv.appendChild(endInput);
+            dropdown.appendChild(rangeDiv);
+            
+            // フッター
+            const footer = document.createElement('div');
+            footer.className = 'filter-footer';
+            
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-filter-btn';
+            applyBtn.textContent = '適用';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                applyDateFilter(columnPath, startInput.value, endInput.value);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-filter-btn';
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeActiveFilterDropdown();
+            };
+            
+            footer.appendChild(applyBtn);
+            footer.appendChild(cancelBtn);
+            dropdown.appendChild(footer);
+        }
+        
+        // 日時フィルタの場合
+        else if (filterType === 'datetime') {
+            const existingFilter = columnFilters.get(columnPath);
+            
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'filter-header';
+            const headerTitle = document.createElement('span');
+            headerTitle.textContent = '日時フィルタ';
+            headerTitle.style.fontWeight = 'bold';
+            headerTitle.style.marginRight = 'auto';
+            header.appendChild(headerTitle);
+            
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                const startInput = dropdown.querySelector('.datetime-start');
+                const endInput = dropdown.querySelector('.datetime-end');
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            };
+            header.appendChild(clearBtn);
+            
+            dropdown.appendChild(header);
+            
+            // 日時範囲入力
+            const rangeDiv = document.createElement('div');
+            rangeDiv.className = 'filter-datetime-range';
+            rangeDiv.style.padding = '10px';
+            
+            const startLabel = document.createElement('label');
+            startLabel.textContent = '開始日時:';
+            startLabel.style.display = 'block';
+            startLabel.style.marginBottom = '5px';
+            const startInput = document.createElement('input');
+            startInput.type = 'datetime-local';
+            startInput.className = 'datetime-start';
+            startInput.value = existingFilter?.startDateTime ? 
+                existingFilter.startDateTime.slice(0, 16) : ''; // datetime-localはミリ秒非対応
+            startInput.style.width = '100%';
+            startInput.style.marginBottom = '10px';
+            
+            const endLabel = document.createElement('label');
+            endLabel.textContent = '終了日時:';
+            endLabel.style.display = 'block';
+            endLabel.style.marginBottom = '5px';
+            const endInput = document.createElement('input');
+            endInput.type = 'datetime-local';
+            endInput.className = 'datetime-end';
+            endInput.value = existingFilter?.endDateTime ? 
+                existingFilter.endDateTime.slice(0, 16) : '';
+            endInput.style.width = '100%';
+            
+            rangeDiv.appendChild(startLabel);
+            rangeDiv.appendChild(startInput);
+            rangeDiv.appendChild(endLabel);
+            rangeDiv.appendChild(endInput);
+            dropdown.appendChild(rangeDiv);
+            
+            // フッター
+            const footer = document.createElement('div');
+            footer.className = 'filter-footer';
+            
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-filter-btn';
+            applyBtn.textContent = '適用';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                applyDateTimeFilter(columnPath, startInput.value, endInput.value);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-filter-btn';
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeActiveFilterDropdown();
+            };
+            
+            footer.appendChild(applyBtn);
+            footer.appendChild(cancelBtn);
+            dropdown.appendChild(footer);
+        }
+        
         // テキストフィルタの場合（その他）
         else if (filterType === 'text') {
             const existingFilter = columnFilters.get(columnPath);
@@ -1961,6 +2241,56 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'text',
                 active: true,
                 query: query.trim()
+            });
+        }
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ドロップダウンを閉じる
+        closeActiveFilterDropdown();
+    }
+    
+    // 日付フィルタを適用
+    function applyDateFilter(columnPath, startDate, endDate) {
+        if (!startDate && !endDate) {
+            // フィルタをクリア
+            columnFilters.delete(columnPath);
+        } else {
+            // フィルタを設定
+            columnFilters.set(columnPath, {
+                type: 'date',
+                active: true,
+                startDate: startDate,
+                endDate: endDate
+            });
+        }
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ドロップダウンを閉じる
+        closeActiveFilterDropdown();
+    }
+    
+    // 日時フィルタを適用
+    function applyDateTimeFilter(columnPath, startDateTime, endDateTime) {
+        if (!startDateTime && !endDateTime) {
+            // フィルタをクリア
+            columnFilters.delete(columnPath);
+        } else {
+            // フィルタを設定
+            columnFilters.set(columnPath, {
+                type: 'datetime',
+                active: true,
+                startDateTime: startDateTime,
+                endDateTime: endDateTime
             });
         }
         
