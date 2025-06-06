@@ -607,7 +607,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     td.innerHTML = `<span class="cell-value" title="クリックしてコピー">${escapeHtml(displayValue)}</span>`;
                     td.querySelector('.cell-value').addEventListener('click', (e) => {
                         e.stopPropagation();
-                        showStringDialog(String(value));
+                        // 配列の場合はJSON.stringifyを使用
+                        const valueStr = Array.isArray(value) ? JSON.stringify(value) : String(value);
+                        showStringDialog(valueStr);
                     });
                 } else {
                     td.textContent = displayValue;
@@ -1562,8 +1564,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 const valueSpan = document.createElement('span');
                 valueSpan.className = 'filter-value';
-                valueSpan.textContent = String(value);
-                valueSpan.title = String(value);
+                // 配列の場合はJSON表現を使用
+                const valueStr = Array.isArray(value) ? JSON.stringify(value) : String(value);
+                valueSpan.textContent = valueStr;
+                valueSpan.title = valueStr;
                 
                 const countSpan = document.createElement('span');
                 countSpan.className = 'filter-count';
@@ -2554,21 +2558,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // 自身を表示
         hiddenColumns.delete(fullPath);
         autoHiddenColumns.delete(fullPath);
+        hiddenByParent.delete(fullPath);
         
-        // 親によって非表示になっていた子列を確認
-        const childrenToShow = [];
-        hiddenByParent.forEach((parent, child) => {
-            if (parent === fullPath) {
-                childrenToShow.push(child);
+        // この列のすべての子を取得（columnHierarchyから）
+        const children = columnHierarchy[fullPath] || [];
+        
+        // すべての子列を再表示
+        children.forEach(child => {
+            if (hiddenColumns.has(child)) {
+                hiddenColumns.delete(child);
+                hiddenByParent.delete(child);
+                autoHiddenColumns.delete(child);
+                // 再帰的に子の子も処理
+                showColumn(child);
             }
-        });
-        
-        // 該当する子列を表示
-        childrenToShow.forEach(child => {
-            hiddenColumns.delete(child);
-            hiddenByParent.delete(child);
-            // 再帰的に子の子も処理
-            showColumn(child);
         });
         
         // 親要素も連動して表示（自動非表示されていた場合）
@@ -2775,12 +2778,35 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // ユーザーが直接非表示にした列のみ表示（自動非表示と親による非表示を除外）
-        const userHiddenColumns = Array.from(hiddenColumns).filter(path => 
-            !hiddenByParent.has(path) && !autoHiddenColumns.has(path)
-        );
+        // 再表示可能な列を計算
+        const showableColumns = new Set();
         
-        userHiddenColumns.forEach(path => {
+        // すべての非表示列を確認
+        hiddenColumns.forEach(path => {
+            // この列の子がすべて非表示かチェック
+            const children = columnHierarchy[path] || [];
+            const allChildrenHidden = children.length === 0 || 
+                children.every(child => hiddenColumns.has(child));
+            
+            if (allChildrenHidden) {
+                // すべての子が非表示、または子がない場合
+                // 親が非表示でない場合のみ、この列を表示可能とする
+                const parentPath = getParentPath(path);
+                if (!parentPath || !hiddenColumns.has(parentPath)) {
+                    showableColumns.add(path);
+                }
+            }
+        });
+        
+        // 表示可能な列がない場合
+        if (showableColumns.size === 0) {
+            list.innerHTML = '<div class="empty-message">再表示可能な列はありません</div>';
+            return;
+        }
+        
+        // 表示可能な列をソートして表示
+        const sortedColumns = Array.from(showableColumns).sort();
+        sortedColumns.forEach(path => {
             const item = document.createElement('div');
             item.className = 'hidden-column-item';
             item.innerHTML = `<span class="column-path">${escapeHtml(path)}</span>`;

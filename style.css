@@ -791,7 +791,8 @@ body.table-tab-active {
 /* 行ラッパー */
 .line {
     display: block;
-    white-space: nowrap;
+    white-space: pre-wrap;
+    word-wrap: break-word;
     line-height: 1.5;
     margin: 0;
     padding: 0;
