@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // パースされたJSONデータを保持（初期化を最初に行う）
+    let parsedData = [];
+    
     // 多言語対応
     const translations = {
         ja: {
@@ -18,7 +21,12 @@ document.addEventListener('DOMContentLoaded', function() {
             fileReadError: 'ファイルの読み込みに失敗しました。',
             parseError: 'JSONのパースに失敗しました',
             emptyInput: 'JSON Lines を入力してください',
-            emptyInput: 'データを入力してください',
+            hideColumn: '列を非表示',
+            showHiddenColumns: '非表示列を表示',
+            filter: 'フィルタ',
+            clickToShowFull: 'クリックして全体を表示',
+            clearSearch: '検索をクリア',
+            existenceRate: '{rate}%のデータに値が存在',
             // フィルタ関連
             filterTitle: 'フィルタ',
             selectAll: 'すべて選択',
@@ -53,7 +61,12 @@ document.addEventListener('DOMContentLoaded', function() {
             fileReadError: 'Failed to read file.',
             parseError: 'Failed to parse JSON',
             emptyInput: 'Please enter JSON Lines',
-            emptyInput: 'Please enter data',
+            hideColumn: 'Hide Column',
+            showHiddenColumns: 'Show Hidden Columns',
+            filter: 'Filter',
+            clickToShowFull: 'Click to view full text',
+            clearSearch: 'Clear search',
+            existenceRate: 'Values exist in {rate}% of data',
             // フィルタ関連
             filterTitle: 'Filter',
             selectAll: 'Select All',
@@ -119,9 +132,19 @@ document.addEventListener('DOMContentLoaded', function() {
         const menuHeader = document.querySelector('.menu-header');
         if (menuHeader) menuHeader.textContent = t('hiddenColumns');
         
+        // ＋ボタンのtitle
+        const showColumnsBtn = document.getElementById('show-columns-btn');
+        if (showColumnsBtn) showColumnsBtn.title = t('showHiddenColumns');
+        
+        // 検索クリアボタンのtitle
+        const clearSearchBtn = document.getElementById('clear-search-btn');
+        if (clearSearchBtn) clearSearchBtn.title = t('clearSearch');
+        
         // テーブルを再描画（列名の更新が必要な場合）
-        if (parsedData.length > 0 && document.querySelector('#table-tab').classList.contains('active')) {
-            createTable();
+        if (parsedData && parsedData.length > 0 && document.querySelector('#table-tab').classList.contains('active')) {
+            if (typeof createTable === 'function') {
+                createTable();
+            }
         }
     }
     
@@ -143,9 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // タブ関連の要素
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabPanels = document.querySelectorAll('.tab-panel');
-    
-    // パースされたJSONデータを保持
-    let parsedData = [];
     
     // sessionStorageのキー
     const STORAGE_KEY_INPUT = 'jsonlines_input';
@@ -693,7 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const hideBtn = document.createElement('span');
                 hideBtn.className = 'column-hide-btn';
                 hideBtn.innerHTML = '<span class="hide-icon-circle">×</span>';
-                hideBtn.title = '列を非表示';
+                hideBtn.title = t('hideColumn');
                 hideBtn.dataset.columnPath = cell.fullPath;
                 th.appendChild(hideBtn);
                 
@@ -750,7 +770,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 文字列が省略されている場合、クリック可能にする
                 if (typeof value === 'string' && value.length > 30) {
-                    td.innerHTML = `<span class="truncated-string" title="クリックして全体を表示">${escapeHtml(displayValue)}</span>`;
+                    td.innerHTML = `<span class="truncated-string" title="${t('clickToShowFull')}">${escapeHtml(displayValue)}</span>`;
                     td.querySelector('.truncated-string').addEventListener('click', (e) => {
                         e.stopPropagation();
                         showStringDialog(value);
@@ -1026,7 +1046,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createExistenceIndicator(rate) {
         const indicator = document.createElement('div');
         indicator.className = 'existence-indicator';
-        indicator.title = `${rate}%のデータに値が存在`;
+        indicator.title = t('existenceRate').replace('{rate}', rate);
         
         // 10個のドットを作成（10%刻み）
         for (let i = 1; i <= 10; i++) {
@@ -1079,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterIcon.className = 'filter-icon';
                 filterIcon.dataset.columnPath = key;
                 filterIcon.innerHTML = '▼';  // フィルタアイコン
-                filterIcon.title = 'フィルタ';
+                filterIcon.title = t('filter');
                 
                 // フィルタアイコンのクリックイベント
                 filterIcon.addEventListener('click', (e) => {
@@ -3172,7 +3192,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 文字列をグローバルに保存
                 window.fullStrings = window.fullStrings || {};
                 window.fullStrings[stringId] = obj;
-                return `<span class="json-string truncated-string" data-action="show-string" data-string-id="${stringId}" title="クリックして全体を表示">"${escapeHtml(truncated)}…"</span>`;
+                return `<span class="json-string truncated-string" data-action="show-string" data-string-id="${stringId}" title="${t('clickToShowFull')}">"${escapeHtml(truncated)}…"</span>`;
             }
             const stringId = 'str-' + Math.random().toString(36).substr(2, 9);
             window.fullStrings = window.fullStrings || {};
