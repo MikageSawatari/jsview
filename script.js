@@ -38,6 +38,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // フィルタ状態の管理
     const columnFilters = new Map();
     let activeFilterDropdown = null;  // 現在開いているフィルタドロップダウン
+    let isDragging = false;  // ドラッグ中かどうか
+    let dragStartElement = null;  // ドラッグ開始要素
+    let mouseDownPos = { x: 0, y: 0 };  // mousedown時の座標
+    let ignoringClicks = false;  // ドラッグ後のクリックを無視するフラグ
 
     // タブ切り替え機能
     function switchTab(tabName, pushState = true) {
@@ -921,14 +925,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 sortIcon.className = 'sort-icon';
                 sortIcon.dataset.columnPath = key;
                 
-                // ×ボタンの前に挿入（フィルタアイコン → ソートアイコン → ×ボタンの順）
+                // ×ボタンの前に挿入（ソートアイコン → フィルタアイコン → ×ボタンの順）
                 const hideBtn = th.querySelector('.column-hide-btn');
                 if (hideBtn) {
-                    th.insertBefore(filterIcon, hideBtn);
                     th.insertBefore(sortIcon, hideBtn);
+                    th.insertBefore(filterIcon, hideBtn);
                 } else {
-                    th.appendChild(filterIcon);
                     th.appendChild(sortIcon);
+                    th.appendChild(filterIcon);
                 }
             }
         });
@@ -1016,6 +1020,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // 特定の列のフィルタを除外してフィルタリングされたデータを取得
+    function getFilteredDataExcludingColumn(excludeColumnPath) {
+        let data = parsedData;
+        
+        // 検索フィルタを適用
+        if (searchState.query) {
+            const queries = parseSearchQuery(searchState.query);
+            
+            data = data.filter(row => matchesQuery(row, queries));
+        }
+        
+        // 列フィルタを適用（除外する列を除いて）
+        columnFilters.forEach((filter, columnPath) => {
+            if (filter.active && columnPath !== excludeColumnPath) {
+                data = data.filter(row => {
+                    const value = getValueByPath(row, columnPath);
+                    
+                    if (filter.type === 'checkbox') {
+                        return filter.selectedValues.has(value);
+                    }
+                    else if (filter.type === 'range') {
+                        if (typeof value !== 'number') return false;
+                        
+                        if (filter.customMin !== null && value < filter.customMin) return false;
+                        if (filter.customMax !== null && value > filter.customMax) return false;
+                        
+                        if (filter.ranges.length > 0) {
+                            return filter.ranges.some(range => 
+                                value >= range.min && value <= range.max
+                            );
+                        }
+                        
+                        return true;
+                    }
+                    else if (filter.type === 'text') {
+                        if (value === null || value === undefined) return false;
+                        
+                        const queries = parseSearchQuery(filter.query);
+                        // matchesQueryを使用して統一的に処理
+                        return matchesQuery({ [columnPath]: value }, queries);
+                    }
+                    
+                    return true;
+                });
+            }
+        });
+        
+        return data;
+    }
+    
     // 検索条件と列フィルタに基づいてデータをフィルタ
     function getFilteredData() {
         let data = parsedData;
@@ -1025,15 +1079,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // 検索クエリをパース
             const queries = parseSearchQuery(searchState.query);
             
-            data = data.filter(row => {
-                if (queries.mode === 'AND') {
-                    // AND検索: すべての条件を満たす
-                    return queries.terms.every(term => matchesSearchTerm(row, term));
-                } else {
-                    // OR検索: いずれかの条件を満たす
-                    return queries.terms.some(term => matchesSearchTerm(row, term));
-                }
-            });
+            data = data.filter(row => matchesQuery(row, queries));
         }
         
         // 列フィルタを適用
@@ -1046,7 +1092,32 @@ document.addEventListener('DOMContentLoaded', function() {
                         // チェックボックスフィルタ: 選択された値のいずれかと一致
                         return filter.selectedValues.has(value);
                     }
-                    // TODO: 範囲フィルタとテキストフィルタの対応
+                    else if (filter.type === 'range') {
+                        // 範囲フィルタ: 数値が指定範囲内にあるか
+                        if (typeof value !== 'number') return false;
+                        
+                        // カスタム範囲のチェック
+                        if (filter.customMin !== null && value < filter.customMin) return false;
+                        if (filter.customMax !== null && value > filter.customMax) return false;
+                        
+                        // 選択された範囲のチェック
+                        if (filter.ranges.length > 0) {
+                            return filter.ranges.some(range => 
+                                value >= range.min && value <= range.max
+                            );
+                        }
+                        
+                        // カスタム範囲のみの場合
+                        return true;
+                    }
+                    else if (filter.type === 'text') {
+                        // テキストフィルタ: 検索条件に一致するか
+                        if (value === null || value === undefined) return false;
+                        
+                        const queries = parseSearchQuery(filter.query);
+                        // matchesQueryを使用して統一的に処理
+                        return matchesQuery({ [columnPath]: value }, queries);
+                    }
                     
                     return true;
                 });
@@ -1056,8 +1127,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return data;
     }
     
-    // 検索クエリをパース
+    // 検索クエリをパース（改行対応版）
     function parseSearchQuery(query) {
+        // 改行で分割（各行はOR条件）
+        const lines = query.split('\n').map(line => line.trim()).filter(line => line);
+        
+        if (lines.length > 1) {
+            // 複数行の場合、各行をパースしてOR結合
+            const lineQueries = lines.map(line => parseSingleLineQuery(line));
+            return {
+                mode: 'LINE_OR',
+                lineQueries: lineQueries
+            };
+        } else if (lines.length === 1) {
+            // 単一行の場合
+            return parseSingleLineQuery(lines[0]);
+        } else {
+            // 空の場合
+            return { mode: 'AND', terms: [] };
+        }
+    }
+    
+    // 単一行のクエリをパース（既存のロジック）
+    function parseSingleLineQuery(query) {
         // セミコロンが含まれている場合はOR検索
         if (query.includes(';')) {
             return {
@@ -1071,6 +1163,28 @@ document.addEventListener('DOMContentLoaded', function() {
             mode: 'AND',
             terms: query.split(/\s+/).filter(t => t)
         };
+    }
+    
+    // クエリにマッチするかチェック（複数行対応）
+    function matchesQuery(row, queries) {
+        if (queries.mode === 'LINE_OR') {
+            // 複数行OR: いずれかの行のクエリにマッチすればOK
+            return queries.lineQueries.some(lineQuery => {
+                if (lineQuery.mode === 'AND') {
+                    // AND: すべての条件を満たす
+                    return lineQuery.terms.every(term => matchesSearchTerm(row, term));
+                } else {
+                    // OR: いずれかの条件を満たす
+                    return lineQuery.terms.some(term => matchesSearchTerm(row, term));
+                }
+            });
+        } else if (queries.mode === 'AND') {
+            // AND検索: すべての条件を満たす
+            return queries.terms.every(term => matchesSearchTerm(row, term));
+        } else {
+            // OR検索: いずれかの条件を満たす
+            return queries.terms.some(term => matchesSearchTerm(row, term));
+        }
     }
     
     // 単一の検索タームにマッチするかチェック
@@ -1197,6 +1311,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // 外側クリックのイベントリスナーを登録（次のイベントループで）
             setTimeout(() => {
                 document.addEventListener('click', handleOutsideClick, true);
+                document.addEventListener('mousedown', handleGlobalMouseDown, true);
+                document.addEventListener('mousemove', handleGlobalMouseMove, true);
+                document.addEventListener('mouseup', handleGlobalMouseUp, true);
             }, 0);
         }, 10);
     }
@@ -1206,6 +1323,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (activeFilterDropdown) {
             activeFilterDropdown.classList.remove('active');
             document.removeEventListener('click', handleOutsideClick, true);
+            document.removeEventListener('mousedown', handleGlobalMouseDown, true);
+            document.removeEventListener('mousemove', handleGlobalMouseMove, true);
+            document.removeEventListener('mouseup', handleGlobalMouseUp, true);
+            isDragging = false;  // 状態をリセット
+            dragStartElement = null;
+            mouseDownPos = { x: 0, y: 0 };
+            ignoringClicks = false;  // クリック無視フラグもリセット
             setTimeout(() => {
                 if (activeFilterDropdown && activeFilterDropdown.parentNode) {
                     activeFilterDropdown.parentNode.removeChild(activeFilterDropdown);
@@ -1226,9 +1350,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const existingFilter = columnFilters.get(columnPath);
             const selectedValues = existingFilter ? existingFilter.selectedValues : new Set();
             
-            // 現在のフィルタ状態での値の出現回数を計算
+            // 現在のフィルタ状態での値の出現回数を計算（自身のフィルタを除外）
             const filteredCounts = new Map();
-            const currentData = getFilteredData();
+            const currentData = getFilteredDataExcludingColumn(columnPath);
             currentData.forEach(row => {
                 const value = getValueByPath(row, columnPath);
                 if (value !== null && value !== undefined && value !== '') {
@@ -1239,6 +1363,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // ヘッダー
             const header = document.createElement('div');
             header.className = 'filter-header';
+            
+            const headerTitle = document.createElement('span');
+            headerTitle.textContent = 'チェックボックスフィルタ';
+            headerTitle.style.fontWeight = 'bold';
+            headerTitle.style.marginRight = 'auto';
+            header.appendChild(headerTitle);
             
             const selectAllBtn = document.createElement('button');
             selectAllBtn.textContent = 'すべて選択';
@@ -1302,7 +1432,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 countSpan.className = 'filter-count';
                 // フィルタ適用中は、フィルタ後の件数も表示
                 const filteredCount = filteredCounts.get(value) || 0;
-                if (existingFilter && existingFilter.active) {
+                
+                // 他の列にフィルタが適用されているか確認
+                const hasOtherFilters = Array.from(columnFilters.entries()).some(
+                    ([path, filter]) => path !== columnPath && filter.active
+                );
+                
+                if (hasOtherFilters || searchState.query) {
                     countSpan.textContent = `(${filteredCount}/${count})`;
                     countSpan.title = `フィルタ後: ${filteredCount}件 / 全体: ${count}件`;
                 } else {
@@ -1342,7 +1478,298 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.appendChild(footer);
         }
         
-        // TODO: 範囲フィルタとテキストフィルタの実装
+        // 範囲フィルタの場合（数値が20種類超）
+        else if (filterType === 'range') {
+            const existingFilter = columnFilters.get(columnPath);
+            
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'filter-header';
+            
+            const headerTitle = document.createElement('span');
+            headerTitle.textContent = '数値範囲フィルタ';
+            headerTitle.style.fontWeight = 'bold';
+            headerTitle.style.marginRight = 'auto';
+            header.appendChild(headerTitle);
+            
+            const selectAllBtn = document.createElement('button');
+            selectAllBtn.textContent = 'すべて選択';
+            selectAllBtn.onclick = (e) => {
+                e.stopPropagation();
+                selectAllFilterItems(dropdown, true);
+            };
+            
+            const clearAllBtn = document.createElement('button');
+            clearAllBtn.textContent = 'すべて解除';
+            clearAllBtn.onclick = (e) => {
+                e.stopPropagation();
+                selectAllFilterItems(dropdown, false);
+            };
+            
+            header.appendChild(selectAllBtn);
+            header.appendChild(clearAllBtn);
+            dropdown.appendChild(header);
+            
+            // 範囲入力
+            const rangeInputs = document.createElement('div');
+            rangeInputs.className = 'filter-range-inputs';
+            
+            const minInput = document.createElement('input');
+            minInput.type = 'number';
+            minInput.placeholder = '最小値';
+            minInput.value = existingFilter?.customMin || '';
+            
+            const separator = document.createElement('span');
+            separator.textContent = '～';
+            
+            const maxInput = document.createElement('input');
+            maxInput.type = 'number';
+            maxInput.placeholder = '最大値';
+            maxInput.value = existingFilter?.customMax || '';
+            
+            rangeInputs.appendChild(minInput);
+            rangeInputs.appendChild(separator);
+            rangeInputs.appendChild(maxInput);
+            dropdown.appendChild(rangeInputs);
+            
+            // 数値の範囲を計算
+            const numValues = Array.from(analysis.values.keys())
+                .filter(v => typeof v === 'number')
+                .sort((a, b) => a - b);
+            
+            // 範囲を作成（最大20個）
+            const ranges = [];
+            if (numValues.length <= 20) {
+                // 値が20個以下の場合は各値を個別に表示
+                const valueCountMap = new Map();
+                numValues.forEach(val => {
+                    valueCountMap.set(val, analysis.values.get(val));
+                });
+                
+                valueCountMap.forEach((count, value) => {
+                    ranges.push({
+                        min: value,
+                        max: value,
+                        count: count,
+                        isSingle: true
+                    });
+                });
+            } else {
+                // 値が20個超の場合は範囲に分割
+                const uniqueValues = [...new Set(numValues)].sort((a, b) => a - b);
+                const min = uniqueValues[0];
+                const max = uniqueValues[uniqueValues.length - 1];
+                const step = (max - min) / 20;
+                
+                for (let i = 0; i < 20; i++) {
+                    const rangeMin = min + (step * i);
+                    const rangeMax = i === 19 ? max : min + (step * (i + 1));
+                    
+                    // この範囲に含まれる実際の値を取得
+                    const valuesInRange = uniqueValues.filter(val => {
+                        if (i === 19) {
+                            return val >= rangeMin && val <= rangeMax;
+                        }
+                        return val >= rangeMin && val < rangeMax;
+                    });
+                    
+                    if (valuesInRange.length > 0) {
+                        // 実際のデータの最小値と最大値を使用
+                        const actualMin = valuesInRange[0];
+                        const actualMax = valuesInRange[valuesInRange.length - 1];
+                        
+                        // この範囲のカウントを計算
+                        let count = 0;
+                        valuesInRange.forEach(val => {
+                            count += analysis.values.get(val) || 0;
+                        });
+                        
+                        ranges.push({
+                            min: actualMin,
+                            max: actualMax,
+                            count: count,
+                            isSingle: actualMin === actualMax
+                        });
+                    }
+                }
+            }
+            
+            // 範囲リスト
+            const listDiv = document.createElement('div');
+            listDiv.className = 'filter-range-list';
+            
+            ranges.forEach(range => {
+                const label = document.createElement('label');
+                label.className = 'filter-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.dataset.min = range.min;
+                checkbox.dataset.max = range.max;
+                checkbox.checked = existingFilter?.ranges?.some(r => 
+                    r.min === range.min && r.max === range.max && r.selected
+                ) || false;
+                
+                const rangeText = document.createElement('span');
+                rangeText.className = 'filter-value';
+                // 整数の場合は小数点を表示しない
+                const formatNumber = (num) => {
+                    return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+                };
+                rangeText.textContent = range.isSingle 
+                    ? formatNumber(range.min) 
+                    : `${formatNumber(range.min)} - ${formatNumber(range.max)}`;
+                
+                const countSpan = document.createElement('span');
+                countSpan.className = 'filter-count';
+                
+                // フィルタ適用中は、フィルタ後の件数も計算（自身のフィルタを除外）
+                const hasOtherFilters = Array.from(columnFilters.entries()).some(
+                    ([path, filter]) => path !== columnPath && filter.active
+                );
+                
+                if (hasOtherFilters || searchState.query) {
+                    let filteredCount = 0;
+                    const currentData = getFilteredDataExcludingColumn(columnPath);
+                    currentData.forEach(row => {
+                        const value = getValueByPath(row, columnPath);
+                        if (typeof value === 'number') {
+                            if (range.isSingle && value === range.min) {
+                                filteredCount++;
+                            } else if (!range.isSingle && value >= range.min && value <= range.max) {
+                                filteredCount++;
+                            }
+                        }
+                    });
+                    
+                    if (filteredCount !== range.count) {
+                        countSpan.textContent = `(${filteredCount}/${range.count})`;
+                        countSpan.title = `フィルタ後: ${filteredCount}件 / 全体: ${range.count}件`;
+                    } else {
+                        countSpan.textContent = `(${range.count})`;
+                    }
+                } else {
+                    countSpan.textContent = `(${range.count})`;
+                }
+                
+                label.appendChild(checkbox);
+                label.appendChild(rangeText);
+                label.appendChild(countSpan);
+                listDiv.appendChild(label);
+            });
+            
+            dropdown.appendChild(listDiv);
+            
+            // フッター
+            const footer = document.createElement('div');
+            footer.className = 'filter-footer';
+            
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-filter-btn';
+            applyBtn.textContent = '適用';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                applyRangeFilter(columnPath, dropdown, minInput, maxInput);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-filter-btn';
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeActiveFilterDropdown();
+            };
+            
+            footer.appendChild(applyBtn);
+            footer.appendChild(cancelBtn);
+            dropdown.appendChild(footer);
+        }
+        
+        // テキストフィルタの場合（その他）
+        else if (filterType === 'text') {
+            const existingFilter = columnFilters.get(columnPath);
+            
+            // ヘッダー
+            const header = document.createElement('div');
+            header.className = 'filter-header';
+            const headerText = document.createElement('span');
+            headerText.textContent = 'テキストフィルタ';
+            header.appendChild(headerText);
+            
+            const clearBtn = document.createElement('button');
+            clearBtn.textContent = 'クリア';
+            clearBtn.onclick = (e) => {
+                e.stopPropagation();
+                const textarea = dropdown.querySelector('textarea');
+                if (textarea) textarea.value = '';
+            };
+            header.appendChild(clearBtn);
+            
+            dropdown.appendChild(header);
+            
+            // 情報
+            const info = document.createElement('div');
+            info.className = 'filter-info';
+            
+            // 全体の件数とフィルタ適用時の件数を表示
+            const totalCount = analysis.values.size;
+            const hasOtherFilters = Array.from(columnFilters.entries()).some(
+                ([path, filter]) => path !== columnPath && filter.active
+            );
+            
+            if (hasOtherFilters || searchState.query) {
+                // 他の列でフィルタ適用中（自身のフィルタを除外）
+                const currentData = getFilteredDataExcludingColumn(columnPath);
+                const currentValues = new Set();
+                currentData.forEach(row => {
+                    const value = getValueByPath(row, columnPath);
+                    if (value !== null && value !== undefined && value !== '') {
+                        currentValues.add(value);
+                    }
+                });
+                const currentCount = currentValues.size;
+                info.textContent = `値が多いため、検索条件で絞り込んでください (${currentCount}/${totalCount}種類)`;
+            } else {
+                info.textContent = `値が多いため、検索条件で絞り込んでください (${totalCount}種類)`;
+            }
+            
+            dropdown.appendChild(info);
+            
+            // テキスト入力
+            const textInputDiv = document.createElement('div');
+            textInputDiv.className = 'filter-text-input';
+            
+            const textarea = document.createElement('textarea');
+            textarea.placeholder = '検索条件を入力（スペース:AND、;:OR、改行:OR）';
+            textarea.value = existingFilter?.query || '';
+            
+            textInputDiv.appendChild(textarea);
+            dropdown.appendChild(textInputDiv);
+            
+            // フッター
+            const footer = document.createElement('div');
+            footer.className = 'filter-footer';
+            
+            const applyBtn = document.createElement('button');
+            applyBtn.className = 'apply-filter-btn';
+            applyBtn.textContent = '適用';
+            applyBtn.onclick = (e) => {
+                e.stopPropagation();
+                applyTextFilter(columnPath, textarea.value);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-filter-btn';
+            cancelBtn.textContent = 'キャンセル';
+            cancelBtn.onclick = (e) => {
+                e.stopPropagation();
+                closeActiveFilterDropdown();
+            };
+            
+            footer.appendChild(applyBtn);
+            footer.appendChild(cancelBtn);
+            dropdown.appendChild(footer);
+        }
         
         // ドロップダウン内のクリックを処理
         dropdown.addEventListener('click', (e) => {
@@ -1352,8 +1779,60 @@ document.addEventListener('DOMContentLoaded', function() {
         return dropdown;
     }
     
+    // グローバルなmousedownハンドラー
+    function handleGlobalMouseDown(e) {
+        // ドロップダウン内でmousedownが発生した場合
+        if (activeFilterDropdown && activeFilterDropdown.contains(e.target)) {
+            dragStartElement = e.target;
+            mouseDownPos = { x: e.clientX, y: e.clientY };
+            isDragging = false; // まだドラッグとは判定しない
+        }
+    }
+    
+    // グローバルなmousemoveハンドラー
+    function handleGlobalMouseMove(e) {
+        // mousedownが発生していて、一定距離移動した場合はドラッグと判定
+        if (dragStartElement && !isDragging) {
+            const moveDistance = Math.sqrt(
+                Math.pow(e.clientX - mouseDownPos.x, 2) + 
+                Math.pow(e.clientY - mouseDownPos.y, 2)
+            );
+            
+            // 5ピクセル以上移動したらドラッグと判定
+            if (moveDistance > 5) {
+                isDragging = true;
+            }
+        }
+    }
+    
+    // グローバルなmouseupハンドラー
+    function handleGlobalMouseUp(e) {
+        // ドラッグ操作が終了
+        if (isDragging) {
+            // ドラッグ終了時は何もしない（クリックとして扱わない）
+            isDragging = false;
+            dragStartElement = null;
+            
+            // 一定時間クリックを無視するフラグを立てる
+            ignoringClicks = true;
+            setTimeout(() => {
+                ignoringClicks = false;
+            }, 100);
+            
+            return;
+        }
+        
+        // ドラッグでない場合は通常のクリック処理
+        dragStartElement = null;
+    }
+    
     // ドロップダウン外クリックのハンドラー
     function handleOutsideClick(e) {
+        // ドラッグ中、ドラッグ開始要素が存在、またはドラッグ直後の場合は無視
+        if (isDragging || dragStartElement || ignoringClicks) {
+            return;
+        }
+        
         if (activeFilterDropdown && !activeFilterDropdown.contains(e.target) && 
             !e.target.closest('.filter-icon')) {
             closeActiveFilterDropdown();
@@ -1418,6 +1897,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'checkbox',
                 active: true,
                 selectedValues: selectedValues
+            });
+        }
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ドロップダウンを閉じる
+        closeActiveFilterDropdown();
+    }
+    
+    // 範囲フィルタを適用
+    function applyRangeFilter(columnPath, dropdown, minInput, maxInput) {
+        const checkboxes = dropdown.querySelectorAll('.filter-range-list input[type="checkbox"]:checked');
+        const ranges = [];
+        
+        checkboxes.forEach(cb => {
+            ranges.push({
+                min: parseFloat(cb.dataset.min),
+                max: parseFloat(cb.dataset.max),
+                selected: true
+            });
+        });
+        
+        const customMin = minInput.value ? parseFloat(minInput.value) : null;
+        const customMax = maxInput.value ? parseFloat(maxInput.value) : null;
+        
+        if (ranges.length === 0 && customMin === null && customMax === null) {
+            // フィルタをクリア
+            columnFilters.delete(columnPath);
+        } else {
+            // フィルタを設定
+            columnFilters.set(columnPath, {
+                type: 'range',
+                active: true,
+                ranges: ranges,
+                customMin: customMin,
+                customMax: customMax
+            });
+        }
+        
+        // フィルタアイコンの状態を更新
+        updateFilterIcons();
+        
+        // テーブルを再作成
+        createTable();
+        
+        // ドロップダウンを閉じる
+        closeActiveFilterDropdown();
+    }
+    
+    // テキストフィルタを適用
+    function applyTextFilter(columnPath, query) {
+        if (!query.trim()) {
+            // フィルタをクリア
+            columnFilters.delete(columnPath);
+        } else {
+            // フィルタを設定
+            columnFilters.set(columnPath, {
+                type: 'text',
+                active: true,
+                query: query.trim()
             });
         }
         

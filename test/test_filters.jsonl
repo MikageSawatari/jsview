@@ -1,0 +1,30 @@
+{"id": 1, "name": "田中太郎", "age": 25, "department": "営業部", "salary": 300000, "status": "active", "skills": ["Excel", "PowerPoint"], "joinDate": "2020-04-01"}
+{"id": 2, "name": "佐藤花子", "age": 32, "department": "営業部", "salary": 450000, "status": "active", "skills": ["Excel", "Word", "Python"], "joinDate": "2018-10-15"}
+{"id": 3, "name": "鈴木一郎", "age": 28, "department": "開発部", "salary": 500000, "status": "active", "skills": ["Python", "JavaScript", "SQL"], "joinDate": "2019-07-01"}
+{"id": 4, "name": "高橋美咲", "age": 45, "department": "人事部", "salary": 600000, "status": "active", "skills": ["Excel", "人事管理"], "joinDate": "2010-04-01"}
+{"id": 5, "name": "伊藤健", "age": 38, "department": "経理部", "salary": 520000, "status": "inactive", "skills": ["Excel", "会計ソフト"], "joinDate": "2015-06-01"}
+{"id": 6, "name": "山田次郎", "age": 29, "department": "開発部", "salary": 480000, "status": "active", "skills": ["Java", "Spring", "Docker"], "joinDate": "2019-04-01"}
+{"id": 7, "name": "中村愛", "age": 26, "department": "営業部", "salary": 320000, "status": "active", "skills": ["Excel", "営業"], "joinDate": "2021-04-01"}
+{"id": 8, "name": "小林大輔", "age": 41, "department": "開発部", "salary": 750000, "status": "active", "skills": ["Python", "AI", "機械学習"], "joinDate": "2012-09-01"}
+{"id": 9, "name": "加藤美香", "age": 35, "department": "マーケティング部", "salary": 550000, "status": "active", "skills": ["マーケティング", "データ分析"], "joinDate": "2016-04-01"}
+{"id": 10, "name": "吉田真一", "age": 52, "department": "経営企画部", "salary": 900000, "status": "active", "skills": ["経営戦略", "財務分析"], "joinDate": "2005-04-01"}
+{"id": 11, "name": "渡辺幸子", "age": 30, "department": "人事部", "salary": 400000, "status": "active", "skills": ["人事評価", "採用"], "joinDate": "2018-04-01"}
+{"id": 12, "name": "斎藤隆", "age": 48, "department": "営業部", "salary": 680000, "status": "inactive", "skills": ["営業戦略", "顧客管理"], "joinDate": "2008-04-01"}
+{"id": 13, "name": "松本恵", "age": 27, "department": "デザイン部", "salary": 380000, "status": "active", "skills": ["Photoshop", "Illustrator", "UI/UX"], "joinDate": "2020-10-01"}
+{"id": 14, "name": "井上康平", "age": 33, "department": "開発部", "salary": 580000, "status": "active", "skills": ["React", "Node.js", "MongoDB"], "joinDate": "2017-07-01"}
+{"id": 15, "name": "木村由美", "age": 39, "department": "経理部", "salary": 540000, "status": "active", "skills": ["決算", "税務"], "joinDate": "2014-04-01"}
+{"id": 16, "name": "林修二", "age": 31, "department": "営業部", "salary": 420000, "status": "active", "skills": ["プレゼンテーション", "交渉"], "joinDate": "2018-01-01"}
+{"id": 17, "name": "清水理恵", "age": 24, "department": "マーケティング部", "salary": 280000, "status": "active", "skills": ["SNS運用", "広告運用"], "joinDate": "2022-04-01"}
+{"id": 18, "name": "山口浩", "age": 44, "department": "開発部", "salary": 720000, "status": "active", "skills": ["AWS", "インフラ", "セキュリティ"], "joinDate": "2011-10-01"}
+{"id": 19, "name": "森田さくら", "age": 36, "department": "デザイン部", "salary": 510000, "status": "active", "skills": ["Webデザイン", "グラフィックデザイン"], "joinDate": "2015-04-01"}
+{"id": 20, "name": "橋本太一", "age": 55, "department": "経営企画部", "salary": 950000, "status": "active", "skills": ["M&A", "事業開発"], "joinDate": "2003-04-01"}
+{"id": 21, "name": "石川美穂", "age": 29, "department": "人事部", "salary": 390000, "status": "active", "skills": ["労務管理", "研修企画"], "joinDate": "2019-10-01"}
+{"id": 22, "name": "前田健太", "age": 42, "department": "営業部", "salary": 650000, "status": "active", "skills": ["大口顧客対応", "チームマネジメント"], "joinDate": "2010-07-01"}
+{"id": 23, "name": "藤田愛子", "age": 26, "department": "開発部", "salary": 360000, "status": "active", "skills": ["Ruby", "Rails"], "joinDate": "2021-10-01"}
+{"id": 24, "name": "岡田誠", "age": 37, "department": "経理部", "salary": 560000, "status": "inactive", "skills": ["管理会計", "予算管理"], "joinDate": "2013-04-01"}
+{"id": 25, "name": "中島美紀", "age": 34, "department": "マーケティング部", "salary": 490000, "status": "active", "skills": ["コンテンツマーケティング", "SEO"], "joinDate": "2017-04-01"}
+{"id": 26, "name": "村田俊介", "age": 40, "department": "開発部", "salary": 700000, "status": "active", "skills": ["Go", "Kubernetes", "マイクロサービス"], "joinDate": "2012-04-01"}
+{"id": 27, "name": "小野寺結衣", "age": 28, "department": "デザイン部", "salary": 410000, "status": "active", "skills": ["モーショングラフィックス", "動画編集"], "joinDate": "2019-01-01"}
+{"id": 28, "name": "竹内豊", "age": 46, "department": "営業部", "salary": 690000, "status": "active", "skills": ["海外営業", "英語"], "joinDate": "2009-04-01"}
+{"id": 29, "name": "黒田智子", "age": 32, "department": "人事部", "salary": 470000, "status": "active", "skills": ["組織開発", "人材育成"], "joinDate": "2017-10-01"}
+{"id": 30, "name": "上田大介", "age": 50, "department": "経営企画部", "salary": 880000, "status": "active", "skills": ["IR", "広報"], "joinDate": "2006-04-01"}
