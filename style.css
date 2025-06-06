@@ -91,6 +91,7 @@ button {
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s;
+    height: 40px;  /* 高さを統一 */
 }
 
 .button-group {
@@ -109,6 +110,8 @@ button {
 #formatBtn {
     background-color: #4CAF50;
     color: white;
+    padding: 10px 40px;  /* 横幅を大きく */
+    min-width: 120px;  /* 最小幅を設定 */
 }
 
 #formatBtn:hover {
