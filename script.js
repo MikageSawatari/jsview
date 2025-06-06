@@ -102,22 +102,39 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const lines = input.split('\n').filter(line => line.trim());
-        let hasError = false;
+        const lines = input.split('\n');
+        let totalLines = 0;
+        let errorCount = 0;
         const errors = [];
 
         lines.forEach((line, index) => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) {
+                // 空行はスキップ
+                return;
+            }
+            
+            totalLines++;
+            
             try {
-                const json = JSON.parse(line);
+                const json = JSON.parse(trimmedLine);
                 parsedData.push(json);
             } catch (e) {
-                hasError = true;
+                errorCount++;
                 errors.push(`行 ${index + 1}: ${e.message}`);
+                // エラーがあってもスキップして続行
             }
         });
 
-        if (hasError) {
-            alert('JSONパースエラー:\n' + errors.join('\n'));
+        // エラーがあった場合はアラートを表示（ただし処理は続行）
+        if (errorCount > 0) {
+            alert(`${totalLines}行中${errorCount}行がエラーのためスキップしました。\n\n` + 
+                  (errors.length > 10 ? errors.slice(0, 10).join('\n') + '\n... 他' + (errors.length - 10) + '件のエラー' : errors.join('\n')));
+        }
+        
+        // 有効なデータが1つもない場合はエラー
+        if (parsedData.length === 0) {
+            alert('有効なJSONデータがありませんでした。');
             return;
         }
 
