@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_KEY_INPUT = 'jsonlines_input';
     const STORAGE_KEY_PARSED = 'jsonlines_parsed';
     const STORAGE_KEY_TAB = 'jsonlines_active_tab';
+    const STORAGE_KEY_FILTERS = 'jsonlines_filters';
     
     // 非表示列の管理
     const hiddenColumns = new Set();
@@ -771,6 +772,7 @@ document.addEventListener('DOMContentLoaded', function() {
         sessionStorage.removeItem(STORAGE_KEY_INPUT);
         sessionStorage.removeItem(STORAGE_KEY_PARSED);
         sessionStorage.removeItem(STORAGE_KEY_TAB);
+        sessionStorage.removeItem(STORAGE_KEY_FILTERS);
     }
 
     // 値の存在率を計算する関数
@@ -2183,6 +2185,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // フィルタアイコンの状態を更新
         updateFilterIcons();
         
+        // フィルタを保存
+        saveFiltersToStorage();
+        
         // テーブルを再作成
         createTable();
         
@@ -2223,6 +2228,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // フィルタアイコンの状態を更新
         updateFilterIcons();
         
+        // フィルタを保存
+        saveFiltersToStorage();
+        
         // テーブルを再作成
         createTable();
         
@@ -2246,6 +2254,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // フィルタアイコンの状態を更新
         updateFilterIcons();
+        
+        // フィルタを保存
+        saveFiltersToStorage();
         
         // テーブルを再作成
         createTable();
@@ -2272,6 +2283,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // フィルタアイコンの状態を更新
         updateFilterIcons();
         
+        // フィルタを保存
+        saveFiltersToStorage();
+        
         // テーブルを再作成
         createTable();
         
@@ -2297,11 +2311,48 @@ document.addEventListener('DOMContentLoaded', function() {
         // フィルタアイコンの状態を更新
         updateFilterIcons();
         
+        // フィルタを保存
+        saveFiltersToStorage();
+        
         // テーブルを再作成
         createTable();
         
         // ドロップダウンを閉じる
         closeActiveFilterDropdown();
+    }
+    
+    // フィルタをsessionStorageに保存
+    function saveFiltersToStorage() {
+        const filtersArray = [];
+        columnFilters.forEach((filter, columnPath) => {
+            // Setを配列に変換
+            const serializedFilter = { ...filter };
+            if (filter.selectedValues instanceof Set) {
+                serializedFilter.selectedValues = Array.from(filter.selectedValues);
+            }
+            filtersArray.push([columnPath, serializedFilter]);
+        });
+        sessionStorage.setItem(STORAGE_KEY_FILTERS, JSON.stringify(filtersArray));
+    }
+    
+    // sessionStorageからフィルタを復元
+    function restoreFiltersFromStorage() {
+        const storedFilters = sessionStorage.getItem(STORAGE_KEY_FILTERS);
+        if (storedFilters) {
+            try {
+                const filtersArray = JSON.parse(storedFilters);
+                columnFilters.clear();
+                filtersArray.forEach(([columnPath, filter]) => {
+                    // 配列をSetに戻す
+                    if (filter.selectedValues && Array.isArray(filter.selectedValues)) {
+                        filter.selectedValues = new Set(filter.selectedValues);
+                    }
+                    columnFilters.set(columnPath, filter);
+                });
+            } catch (e) {
+                console.error('フィルタの復元に失敗しました:', e);
+            }
+        }
     }
     
     // フィルタアイコンの状態を更新
@@ -3134,6 +3185,8 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             parsedData = JSON.parse(savedParsed);
             if (parsedData.length > 0 && savedTab === 'table') {
+                // フィルタを復元
+                restoreFiltersFromStorage();
                 // テーブルを再作成
                 createTable();
                 switchTab('table', false);
