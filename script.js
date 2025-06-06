@@ -602,6 +602,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.stopPropagation();
                         showStringDialog(value);
                     });
+                } else if (value !== null && value !== undefined && value !== '') {
+                    // 値が存在する場合、クリック可能にする
+                    td.innerHTML = `<span class="cell-value" title="クリックしてコピー">${escapeHtml(displayValue)}</span>`;
+                    td.querySelector('.cell-value').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showStringDialog(String(value));
+                    });
                 } else {
                     td.textContent = displayValue;
                 }
@@ -2955,15 +2962,15 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         
         if (obj === null) {
-            return `<span class="json-null">null</span>`;
+            return `<span class="json-null json-value" data-action="show-string" data-string-id="null-value" title="クリックしてコピー">null</span>`;
         }
         
         if (typeof obj === 'boolean') {
-            return `<span class="json-boolean">${obj}</span>`;
+            return `<span class="json-boolean json-value" data-action="show-string" data-string-id="bool-${obj}" title="クリックしてコピー">${obj}</span>`;
         }
         
         if (typeof obj === 'number') {
-            return `<span class="json-number">${obj}</span>`;
+            return `<span class="json-number json-value" data-action="show-string" data-string-id="num-${obj}" title="クリックしてコピー">${obj}</span>`;
         }
         
         if (typeof obj === 'string') {
@@ -2975,7 +2982,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.fullStrings[stringId] = obj;
                 return `<span class="json-string truncated-string" data-action="show-string" data-string-id="${stringId}" title="クリックして全体を表示">"${escapeHtml(truncated)}…"</span>`;
             }
-            return `<span class="json-string">"${escapeHtml(obj)}"</span>`;
+            const stringId = 'str-' + Math.random().toString(36).substr(2, 9);
+            window.fullStrings = window.fullStrings || {};
+            window.fullStrings[stringId] = obj;
+            return `<span class="json-string json-value" data-action="show-string" data-string-id="${stringId}" title="クリックしてコピー">"${escapeHtml(obj)}"</span>`;
         }
         
         if (Array.isArray(obj)) {
@@ -3094,7 +3104,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleObjectCollapse(actionElement.dataset.target);
                 break;
             case 'show-string':
-                showStringDialog(window.fullStrings[actionElement.dataset.stringId]);
+                const stringId = actionElement.dataset.stringId;
+                let value;
+                if (stringId.startsWith('bool-')) {
+                    value = stringId.substring(5);
+                } else if (stringId.startsWith('num-')) {
+                    value = stringId.substring(4);
+                } else if (stringId === 'null-value') {
+                    value = 'null';
+                } else {
+                    value = window.fullStrings[stringId];
+                }
+                showStringDialog(String(value));
                 break;
         }
     }

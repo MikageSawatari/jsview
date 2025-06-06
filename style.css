@@ -708,6 +708,32 @@ body.table-tab-active {
     color: #0066cc;
 }
 
+/* クリック可能なセル値のスタイル */
+.cell-value {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 3px;
+}
+
+.cell-value:hover {
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
+/* JSON表示でのクリック可能な値のスタイル */
+.json-value {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 1px 3px;
+    margin: -1px -3px;
+    border-radius: 3px;
+}
+
+.json-value:hover {
+    background-color: rgba(0, 102, 204, 0.1);
+}
+
 /* 折りたたみ可能なオブジェクト */
 .collapsible-toggle {
     cursor: pointer;
