@@ -461,17 +461,9 @@ body.table-tab-active {
     padding-top: 11px;  /* 上側のパディングを少し増やして位置調整 */
 }
 
-/* ホバー時にツールチップ風に表示 */
-#table-container .header-text[title] {
-    position: relative;
-}
-
-#table-container .header-text[title]:hover::after {
-    content: attr(title);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+/* カスタムツールチップのスタイル */
+.custom-tooltip {
+    position: fixed;
     background-color: #333;
     color: white;
     padding: 5px 10px;
@@ -479,9 +471,15 @@ body.table-tab-active {
     white-space: nowrap;
     font-size: 12px;
     font-weight: normal;
-    z-index: 10000;
+    z-index: 999999;  /* 最高優先度 */
     pointer-events: none;
-    margin-bottom: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    display: none;
+    line-height: 1.4;
+}
+
+.custom-tooltip.visible {
+    display: block;
 }
 
 /* 複数行ヘッダの固定 - 画面に対してスティッキー */

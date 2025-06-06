@@ -719,8 +719,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const tableWidth = table.scrollWidth;
             const containerWidth = tc.clientWidth;
             
-            // スクロールが必要な場合のみ表示
-            if (tableWidth > containerWidth) {
+            // スクロールが必要な場合のみ表示（かつテーブルタブがアクティブな場合）
+            if (tableWidth > containerWidth && document.body.classList.contains('table-tab-active')) {
                 // スクロールバーの幅を考慮した幅を設定
                 // コンテナの幅とスクロール可能な幅の差分を計算
                 const scrollableWidth = tableWidth - containerWidth;
@@ -732,8 +732,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // スクロールバーが同じ範囲をカバーするように調整
                 sc.style.width = (wrapperWidth + scrollableWidth) + 'px';
                 
-                // 横スクロールバーを表示
-                sw.style.display = 'block';
+                // 横スクロールバーを表示（style属性を削除してCSSに任せる）
+                sw.style.display = '';
                 
                 // スクロールイベントの同期
                 let syncing = false;
@@ -758,8 +758,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
             } else {
-                // スクロールが不要な場合は非表示
-                sw.style.display = 'none';
+                // スクロールが不要な場合はstyle属性を削除（CSSに任せる）
+                sw.style.display = '';
             }
         }, 100);
     }
@@ -772,10 +772,10 @@ document.addEventListener('DOMContentLoaded', function() {
             currentTableContainer.innerHTML = '';
         }
         parsedData = [];
-        // 横スクロールバーを非表示
+        // 横スクロールバーのstyle属性をクリア（CSSに任せる）
         const scrollWrapper = document.getElementById('horizontal-scroll-wrapper');
         if (scrollWrapper) {
-            scrollWrapper.style.display = 'none';
+            scrollWrapper.style.display = '';
         }
         switchTab('input');
         
@@ -3593,4 +3593,92 @@ document.addEventListener('DOMContentLoaded', function() {
         
         reader.readAsText(file);
     });
+    
+    // カスタムツールチップの実装
+    let tooltipElement = null;
+    let tooltipTimeout = null;
+    
+    // ツールチップ要素を作成
+    function createTooltipElement() {
+        if (!tooltipElement) {
+            tooltipElement = document.createElement('div');
+            tooltipElement.className = 'custom-tooltip';
+            document.body.appendChild(tooltipElement);
+        }
+        return tooltipElement;
+    }
+    
+    // ツールチップを表示
+    function showTooltip(element, text, event) {
+        if (!text) return;
+        
+        const tooltip = createTooltipElement();
+        tooltip.textContent = text;
+        tooltip.classList.add('visible');
+        
+        // マウス位置から適切にオフセット
+        const offsetX = 20; // マウスカーソルから右に20px
+        const offsetY = -30; // マウスカーソルから上に30px
+        
+        // 画面端での位置調整
+        const tooltipRect = tooltip.getBoundingClientRect();
+        let x = event.pageX + offsetX;
+        let y = event.pageY + offsetY;
+        
+        // 右端を超える場合は左側に表示
+        if (x + tooltipRect.width > window.innerWidth + window.pageXOffset) {
+            x = event.pageX - tooltipRect.width - offsetX;
+        }
+        
+        // 上端を超える場合は下側に表示
+        if (y < window.pageYOffset) {
+            y = event.pageY - offsetY;
+        }
+        
+        tooltip.style.left = x + 'px';
+        tooltip.style.top = y + 'px';
+    }
+    
+    // ツールチップを非表示
+    function hideTooltip() {
+        if (tooltipElement) {
+            tooltipElement.classList.remove('visible');
+        }
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+            tooltipTimeout = null;
+        }
+    }
+    
+    // ヘッダーのツールチップイベントを設定
+    document.addEventListener('mouseover', (e) => {
+        const headerText = e.target.closest('.header-text[title]');
+        if (headerText) {
+            // 少し遅延してから表示（ちらつき防止）
+            tooltipTimeout = setTimeout(() => {
+                showTooltip(headerText, headerText.title, e);
+            }, 200);
+        }
+    });
+    
+    document.addEventListener('mouseout', (e) => {
+        const headerText = e.target.closest('.header-text[title]');
+        if (headerText) {
+            hideTooltip();
+        }
+    });
+    
+    // マウス移動時にツールチップの位置を更新
+    document.addEventListener('mousemove', (e) => {
+        if (tooltipElement && tooltipElement.classList.contains('visible')) {
+            const headerText = e.target.closest('.header-text[title]');
+            if (headerText) {
+                showTooltip(headerText, headerText.title, e);
+            }
+        }
+    });
+    
+    // スクロール時にツールチップを非表示
+    window.addEventListener('scroll', hideTooltip, true);
+    document.addEventListener('wheel', hideTooltip, true);
 });
