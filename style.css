@@ -416,8 +416,8 @@ body.table-tab-active {
     position: sticky;
     top: 0;
     z-index: 10;
-    min-width: 100px;
-    max-width: 300px;  /* 最大幅を制限 */
+    min-width: 120px;  /* アイコン分を考慮して増やす */
+    max-width: 400px;  /* 最大幅も増やす */
     min-height: 42px;  /* 空文字列でも高さを確保 */
     height: 42px;  /* 固定高さを設定 */
     line-height: 22px;  /* 垂直方向の中央揃えを調整 */
@@ -426,12 +426,26 @@ body.table-tab-active {
 }
 
 /* ヘッダテキストの省略表示 */
-#table-container th > span:first-of-type {
+#table-container th .header-text {
     display: inline-block;
-    max-width: calc(100% - 30px);  /* ×ボタンの幅を考慮 */
+    max-width: 100%;  /* 親ノードは×ボタンのみ（paddingで既にカバー） */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+/* リーフノード（フィルタアイコンがある列）の場合 */
+#table-container th.leaf-node {
+    min-width: 140px;  /* アイコン3つ分を考慮 */
+}
+
+#table-container th.leaf-node .header-text {
+    max-width: calc(100% - 20px);  /* フィルタアイコンの実効幅（48px - padding 30px） */
+}
+
+/* ソート中のリーフノードの場合はさらに余白を確保 */
+#table-container th.leaf-node.sorting .header-text {
+    max-width: calc(100% - 45px);  /* ソートアイコン位置（50px + 20px - padding 30px） */
 }
 
 /* rowspanが設定されているヘッダセルの調整 */
@@ -1056,8 +1070,7 @@ body.table-tab-active {
 
 /* ソート機能 */
 .header-text {
-    display: inline-flex;
-    align-items: center;
+    display: inline-block;
     position: relative;
 }
 

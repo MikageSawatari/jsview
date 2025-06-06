@@ -919,6 +919,9 @@ document.addEventListener('DOMContentLoaded', function() {
         flatKeys.forEach(key => {
             const th = thead.querySelector(`th[data-column-path="${key}"]`);
             if (th) {
+                // リーフノードクラスを追加
+                th.classList.add('leaf-node');
+                
                 // このセルの存在率を取得
                 const rate = existenceRates.get(key) || 0;
                 const indicator = createExistenceIndicator(rate);
@@ -2493,10 +2496,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ソートアイコンを更新
     function updateSortIcons() {
-        // すべてのソートアイコンを非アクティブに
+        // すべてのソートアイコンとヘッダのソート状態を非アクティブに
         document.querySelectorAll('.sort-icon').forEach(icon => {
             icon.classList.remove('active');
             icon.textContent = '';
+            // 親のth要素からsortingクラスを削除
+            const th = icon.closest('th');
+            if (th) {
+                th.classList.remove('sorting');
+            }
         });
         
         // 現在ソート中の列にアイコンを表示
@@ -2507,6 +2515,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (icon.dataset.columnPath === sortState.column) {
                     icon.classList.add('active');
                     icon.textContent = sortState.order === 'asc' ? '↑' : '↓';
+                    // 親のth要素にsortingクラスを追加
+                    const th = icon.closest('th');
+                    if (th) {
+                        th.classList.add('sorting');
+                    }
                 }
             });
         }
