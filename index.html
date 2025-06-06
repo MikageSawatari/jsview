@@ -70,7 +70,7 @@
                         JSON Lines を入力:
                         <span class="privacy-note">※内容はサーバに送信されません。ブラウザ上で処理されます。</span>
                     </label>
-                    <textarea id="input" placeholder='{"name": "mikage", "age": 12, "score": {"game": 100, "english": 50}}&#10;{"name": "tomomi", "email": "test@example.com", "score": {"game": 80, "english": 90}}'></textarea>
+                    <textarea id="input" placeholder='{"t":"2025-05-13T11:06:39.444+09:00","c":"REPL","id":6015317,"ctx":"conn6649004","msg":"Setting new configuration state"}&#10;{"t":"2025-05-13T11:06:39.444+09:00","c":"REPL","id":21392,"ctx":"conn6649004","msg":"New replica set config in use"}&#10;{"t":"2025-05-13T11:06:39.445+09:00","c":"NETWORK","id":4333213, "ctx":"ReplicaSetMonitor-TaskExecutor","msg":"RSM Topology Change"}'></textarea>
                     <div class="button-group">
                         <button id="formatBtn">整形</button>
                         <button id="clearBtn">クリア</button>
@@ -111,7 +111,7 @@
     <div id="json-dialog" class="dialog-overlay">
         <div class="dialog-content">
             <div class="dialog-header">
-                <h3>JSON詳細</h3>
+                <h3 id="json-detail-title">JSON詳細</h3>
                 <button id="expand-all-btn" class="expand-all-btn" title="すべて展開">⇔</button>
                 <button class="dialog-close">&times;</button>
             </div>
@@ -125,7 +125,7 @@
     <div id="string-dialog" class="dialog-overlay">
         <div class="dialog-content string-dialog-content">
             <div class="dialog-header">
-                <h3>文字列詳細</h3>
+                <h3 id="string-detail-title">文字列詳細</h3>
                 <button class="dialog-close">&times;</button>
             </div>
             <div class="dialog-body">

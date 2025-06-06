@@ -57,7 +57,7 @@ h1 {
 
 .lang-switch {
     position: absolute;
-    right: 0;
+    right: 70px;  /* 右スクロールボタン(60px)との重なりを避ける */
     top: 50%;
     transform: translateY(-50%);
     background: #f0f0f0;
@@ -71,6 +71,7 @@ h1 {
     justify-content: center;
     transition: all 0.2s;
     font-size: 20px;
+    z-index: 150;  /* スクロールボタンより前面に表示 */
 }
 
 .lang-switch:hover {

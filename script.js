@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearAllFilters: 'すべてのフィルタをクリア',
             hiddenColumns: '非表示の列',
             noResults: '該当するデータが見つかりませんでした',
-            errorSkipped: '行中{skipped}行がエラーのためスキップしました',
+            errorSkipped: '{total}行中{skipped}行がエラーのためスキップしました',
             fileReadError: 'ファイルの読み込みに失敗しました。',
             parseError: 'JSONのパースに失敗しました',
             emptyInput: 'JSON Lines を入力してください',
@@ -42,7 +42,12 @@ document.addEventListener('DOMContentLoaded', function() {
             endDate: '終了日',
             startDateTime: '開始日時',
             endDateTime: '終了日時',
-            filterPlaceholder: '検索条件を入力（改行でOR）'
+            filterPlaceholder: '検索条件を入力（改行でOR）',
+            jsonDetail: 'JSON詳細',
+            expandAll: 'すべて展開',
+            stringDetail: '文字列詳細',
+            otherElements: '他{count}要素',
+            copyToClipboard: 'クリップボードにコピー'
         },
         en: {
             title: 'JSON Lines Pretty Printer',
@@ -57,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearAllFilters: 'Clear All Filters',
             hiddenColumns: 'Hidden Columns',
             noResults: 'No matching data found',
-            errorSkipped: '{skipped} lines skipped due to errors',
+            errorSkipped: '{skipped} of {total} lines skipped due to errors',
             fileReadError: 'Failed to read file.',
             parseError: 'Failed to parse JSON',
             emptyInput: 'Please enter JSON Lines',
@@ -82,7 +87,12 @@ document.addEventListener('DOMContentLoaded', function() {
             endDate: 'End Date',
             startDateTime: 'Start DateTime',
             endDateTime: 'End DateTime',
-            filterPlaceholder: 'Enter search terms (new line for OR)'
+            filterPlaceholder: 'Enter search terms (new line for OR)',
+            jsonDetail: 'JSON Details',
+            expandAll: 'Expand All',
+            stringDetail: 'String Details',
+            otherElements: '{count} more elements',
+            copyToClipboard: 'Copy to Clipboard'
         }
     };
     
@@ -139,6 +149,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // 検索クリアボタンのtitle
         const clearSearchBtn = document.getElementById('clear-search-btn');
         if (clearSearchBtn) clearSearchBtn.title = t('clearSearch');
+        
+        // ダイアログのタイトルと展開ボタン
+        const jsonDetailTitle = document.getElementById('json-detail-title');
+        if (jsonDetailTitle) jsonDetailTitle.textContent = t('jsonDetail');
+        
+        const expandAllBtn = document.getElementById('expand-all-btn');
+        if (expandAllBtn) expandAllBtn.title = t('expandAll');
+        
+        const stringDetailTitle = document.getElementById('string-detail-title');
+        if (stringDetailTitle) stringDetailTitle.textContent = t('stringDetail');
+        
+        // コピーボタン
+        const copyStringBtn = document.getElementById('copy-string-btn');
+        if (copyStringBtn) copyStringBtn.textContent = t('copyToClipboard');
         
         // テーブルを再描画（列名の更新が必要な場合）
         if (parsedData && parsedData.length > 0 && document.querySelector('#table-tab').classList.contains('active')) {
@@ -284,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // エラーがあった場合はアラートを表示（ただし処理は続行）
         if (errorCount > 0) {
-            alert(t('errorSkipped').replace('{skipped}', errorCount) + '\n\n' + 
+            alert(t('errorSkipped').replace('{total}', totalLines).replace('{skipped}', errorCount) + '\n\n' + 
                   (errors.length > 10 ? errors.slice(0, 10).join('\n') + '\n...' : errors.join('\n')));
         }
         
@@ -3217,7 +3241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 省略表示（行全体を1つの要素として扱う）
                 html += `<span class="line">`;
                 html += `${createIndentGuides(indent + 1)}`;
-                html += `<span class="expand-array" data-action="expand-array" data-target="${arrayId}">… (他${obj.length - 3}要素)</span>`;
+                html += `<span class="expand-array" data-action="expand-array" data-target="${arrayId}">… (${t('otherElements').replace('{count}', obj.length - 3)})</span>`;
                 html += `</span>`;
                 
                 // 残りの要素（初期状態では非表示）
